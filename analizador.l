@@ -8,6 +8,7 @@
 cadenas \".+\"
 comenta ¡.+!
 identif [a-zA-Z]{1,16}
+simEsp [\[\],\.\(\)]
 
 %option noyywrap
 
@@ -16,6 +17,7 @@ identif [a-zA-Z]{1,16}
 {cadenas} {printf("cadena: %s\n",yytext);}
 {comenta} {printf("comentarios: %s\n",yytext);}
 {identif} {printf("Identificadores: %s\n",yytext);}
+{simEsp} {printf("Simbolos especiales: %s\n",yytext);}
 . ;
 
 %%

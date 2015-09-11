@@ -6,3 +6,4 @@ Indentificador
 ident
 asdasd
 ¡asdsd32234@!
+[.(,)]
