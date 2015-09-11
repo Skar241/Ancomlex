@@ -2,7 +2,7 @@
 "Adios sdsd"
 "asasas
 sadsadasdasdasdsd"
-¡esto es un comentario!
-¡esto no es un comentraio
-este es un comentario?!
+Indentificador
+ident
+asdasd
 ¡asdsd32234@!

@@ -7,6 +7,7 @@
 
 cadenas \".+\"
 comenta ¡.+!
+identif [a-zA-Z]{1,16}
 
 %option noyywrap
 
@@ -14,6 +15,7 @@ comenta ¡.+!
 
 {cadenas} {printf("cadena: %s\n",yytext);}
 {comenta} {printf("comentarios: %s\n",yytext);}
+{identif} {printf("Identificadores: %s\n",yytext);}
 . ;
 
 %%
