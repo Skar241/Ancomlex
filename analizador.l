@@ -11,7 +11,9 @@ identif [a-zA-Z]{1,16}
 simEsp [\[\],\.\(\)]
 tipo entero|real|simbolo|largo|corto
 palRes _{tipo}
-
+decimal (-|\+)?[0-9]+
+realSe ([0-9]+\.|\.[0-9])[0-9]*
+realCe ({decimal}|{realSe})E{decimal}
 %option noyywrap
 
 %%
