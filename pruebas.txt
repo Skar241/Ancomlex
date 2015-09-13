@@ -7,3 +7,4 @@ ident
 asdasd
 ¡asdsd32234@!
 [.(,)]
+entero _entero _real _simbolo _largo _corto

@@ -12,7 +12,30 @@ typedef tnodo *tokenList;
 
 tokenList root = NULL;
 
+typedef struct Stable{
+        char simbolo[13];
+        int pos;
+        char tipo[13];
+        struct Stable *sig;
+        }SBtable;
+typedef SBtable *tablaS; 
+
+tablaS tablaSim = NULL;
+
+typedef struct Ctable{
+        char string[17];
+        int pos;
+        struct Ctable *sig;
+        }STtable;
+typedef STtable *tablaC; 
+
+tablaC tablaStr = NULL;
+
+int lin=1;
+
 void fillList(tokenList *cabeza,char cl, double val);
+int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
+int addString(tablaC *root,char string[], int pos);
 void printTokens(tokenList root);
 char posPalRes(char string[]);
 
@@ -27,20 +50,22 @@ palRes _{tipo}
 decimal (-|\+)?[0-9]+
 realSe ([0-9]+\.|\.[0-9])[0-9]*
 realCe ({decimal}|{realSe})E{decimal}
+real ({realSe}|{realCe})
+salto \n
+error [^ ]
 %option noyywrap
 
 %%
 
-{cadenas} {printf("cadena: %s\n",yytext);
-		   //fillList(&root,1,1);
-		  }
-{comenta} {printf("comentarios: %s\n",yytext);}
-{identif} {printf("Identificadores: %s\n",yytext);}
-{simEsp} {printf("Simbolos especiales: %s\n",yytext);}
-{palRes} {printf("Palabras reservadas: %s\n",yytext);
-		  //fillList(&root,0,posPalRes(yytext));
-		 }
-. ;
+{cadenas} {fillList(&root,6,addString(&tablaStr,yytext,0));}
+{comenta} {;}
+{identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0,"  "));}
+{simEsp} {fillList(&root,5,yytext[0]);}
+{palRes} {fillList(&root,0,posPalRes(yytext));}
+{decimal} {fillList(&root,7,atoi(yytext));}
+{real} {fillList(&root,8,atof(yytext));}
+{salto} {lin++;}
+{error} {printf("Error en linea: %d %s no esta definida\n",lin,yytext);}
 
 %%
 
@@ -56,13 +81,48 @@ void fillList(tokenList *cabeza,char cl, double val){
      *cabeza=nuevo;
      }
 
+int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
+	if(*root==NULL){
+		tablaS nuevo;
+		nuevo = malloc(sizeof(SBtable));
+		strcpy(nuevo->simbolo,sim);
+		nuevo->pos=pos;
+		strcpy(nuevo->tipo,tipo);
+		nuevo->sig=NULL;
+		*root=nuevo;
+		return pos;
+	}
+	else if(!strcmp((*root)->simbolo,sim)) return pos;
+	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
+}
+
+int addString(tablaC *root,char string[], int pos){
+	if(*root==NULL){
+		tablaC nuevo;
+		nuevo = malloc(sizeof(STtable));
+		strcpy(nuevo->string,string);
+		nuevo->pos=pos;
+		nuevo->sig=NULL;
+		*root=nuevo;
+		return pos;
+	}
+	else return addString(&((*root)->sig),string,pos+1);
+}
+
 //Recibe lista de token, no produce nada, solo imprime
 void printTokens(tokenList root){
 	if(root==NULL)
 		return;
 	else{
 		printTokens(root->sig);
-		//printf("(%d,%d)\n",root->clase,root->valor);
+		switch (root->clase){
+			case 8:
+				printf("(%d,%f)\n",root->clase,root->valor);
+				break;
+			default:
+				printf("(%d,%d)\n",root->clase,(int)root->valor);
+		}
+		
 	}
 }
 
@@ -82,14 +142,6 @@ main(int argc, char *argv[]){
 		printf("No se puede abrir el archivo \n"); 
 	else{
 		yylex();
-		printTokens(root);
-		int a = 'c';
-		double b = 'c';
-		double c = 2.9e2;
-
-		printf("-- %d %d --\n",a,(int)b);
-		printf("-- %e %d --\n",c,(int)c);
-		printf("-- %e %e --\n",atof("2.4E4"),atof("2E-4"));
-		
+		printTokens(root);		
 	}
 }
