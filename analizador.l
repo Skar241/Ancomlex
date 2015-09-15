@@ -44,8 +44,8 @@ int posOpRel(char *string);
 
 %}
 
-cadenas \".+\"
-comenta ¡.+!
+cadenas \"[^\n"]+\"
+comenta ¡[^\n!]+!
 identif [a-zA-Z]{1,16}
 simEsp [\[\],\.\(\)]
 tipo entero|real|simbolo|largo|corto
@@ -75,7 +75,7 @@ error [^ ]
 {opAri} {fillList(&root,4,yytext[0]);}
 {opRel} {fillList(&root,3,posOpRel(yytext));}
 {salto} {lin++;}
-{error} {printf("Error en linea: %d %s no esta definida\n",lin,yytext);}
+{error} {printf("\nError en linea: %d %s no esta definida\n",lin,yytext);}
 
 %%
 
@@ -180,11 +180,18 @@ void printStrings(tablaC root,FILE *tsr){
 }
 
 char posPalRes(char string[]){
-	char palRes[][12]={"_corto","_desde","_entero","_finmientras",
+	char palRes[][13]={"_corto","_desde","_entero","_finmientras",
 					  "_finsi","_hasta","_haz","_incremento","_largo",
 					  "_mientras","_real","_si","_simbolo","_sino"};
-	char i=0;
-	for(i=0;i<14;i++){
+	char flg;
+	char i;
+	
+	if(string[1]<105)
+		flg =0;
+	else
+		flg = 7;
+
+	for(i=flg;i<14;i++){
 		if(!strcmp(string,palRes[i]))
 			return i;
 	}

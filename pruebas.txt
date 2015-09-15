@@ -1,10 +1,22 @@
-"hola mundo"
-"Adios sdsd"
-"asasas
-sadsadasdasdasdsd"
-Indentificador
-ident
-asdasd
-¡asdsd32234@!
-[.(,)]
-entero _entero _real _simbolo _largo _corto
+_entero _real _simbolo _largo _corto
+_si _sino _finsi
+_mientras _finmientras
+_haz _mientras
+_desde _hasta _incremento
+_ ¡esto seria error, aprovecho para comentarios!
+este renglon es detectado como identificador
+:= :
+> < >= <= = ><
++ - * /
+[],.()
+"cadena1" "cadena2" "cadena4" "cadena@""otra cadena"
+1 2 3 4 5
+-1 -2 -3 -4
++1 +2 +3 +4
+12.3 .24 5.0
+2E5 2E+3 2E-4
+.22E2 22.3E-3 1.2E+4
+¡a partir de aqui errores!
+<z <? <> ¡debe marcar ? como error!
+est@ li¿ae ¡@ y ¿ errores, lo demas indentificadores!
+¡esto es un comentario! esteno ¡este si!
