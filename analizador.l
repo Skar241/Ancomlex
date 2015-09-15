@@ -13,7 +13,7 @@ typedef tnodo *tokenList;
 tokenList root = NULL;
 
 typedef struct Stable{
-        char simbolo[13];
+        char simbolo[17];
         int pos;
         char tipo[13];
         struct Stable *sig;
@@ -23,7 +23,7 @@ typedef SBtable *tablaS;
 tablaS tablaSim = NULL;
 
 typedef struct Ctable{
-        char string[17];
+        char *string;
         int pos;
         struct Ctable *sig;
         }STtable;
@@ -36,8 +36,10 @@ int lin=1;
 void fillList(tokenList *cabeza,char cl, double val);
 int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
 int addString(tablaC *root,char string[], int pos);
-void printTokens(tokenList root);
+void printTokens(tokenList root,FILE *tks);
 char posPalRes(char string[]);
+void printSimbolos(tablaS root,FILE *tsm);
+void printStrings(tablaC root,FILE *tsr);
 
 %}
 
@@ -100,6 +102,7 @@ int addString(tablaC *root,char string[], int pos){
 	if(*root==NULL){
 		tablaC nuevo;
 		nuevo = malloc(sizeof(STtable));
+		nuevo->string=malloc(strlen(string)+1);
 		strcpy(nuevo->string,string);
 		nuevo->pos=pos;
 		nuevo->sig=NULL;
@@ -110,19 +113,38 @@ int addString(tablaC *root,char string[], int pos){
 }
 
 //Recibe lista de token, no produce nada, solo imprime
-void printTokens(tokenList root){
+void printTokens(tokenList root,FILE *tks){
 	if(root==NULL)
 		return;
 	else{
-		printTokens(root->sig);
+		printTokens(root->sig,tks);
 		switch (root->clase){
 			case 8:
+				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
 				printf("(%d,%f)\n",root->clase,root->valor);
 				break;
 			default:
+				fprintf(tks,"   %d     %d  \n",root->clase,(int)root->valor);
 				printf("(%d,%d)\n",root->clase,(int)root->valor);
 		}
 		
+	}
+}
+
+void printSimbolos(tablaS root,FILE *tsm){
+	if(root==NULL)
+		return;
+	else{
+		fprintf(tsm,"  %d       %s         \n",root->pos,root->simbolo);
+		printSimbolos(root->sig,tsm);
+	}
+}
+void printStrings(tablaC root,FILE *tsr){
+	if(root==NULL)
+		return;
+	else{
+		fprintf(tsr,"    %d      %s        \n",root->pos,root->string);
+		printStrings(root->sig,tsr);
 	}
 }
 
@@ -137,11 +159,39 @@ char posPalRes(char string[]){
 	}
 }
 
+
 main(int argc, char *argv[]){
 	if((yyin = fopen(argv[1],"r"))== NULL)
 		printf("No se puede abrir el archivo \n"); 
 	else{
 		yylex();
-		printTokens(root);		
+
+		char arch1[strlen(argv[1])+5];
+		char arch2[strlen(argv[1])+5];
+		char arch3[strlen(argv[1])+5];
+
+		strcpy(arch1,argv[1]);
+		strcpy(arch2,argv[1]);
+		strcpy(arch3,argv[1]);
+
+		strcat(arch1,".tks");
+		strcat(arch2,".tsm");
+		strcat(arch3,".tsr");
+
+		FILE *tks = fopen(arch1,"w");
+		FILE *tsm = fopen(arch2,"w");
+		FILE *tsr = fopen(arch3,"w");
+
+		fprintf(tks," clase valor\n");
+		fprintf(tsm," posicion    simbolo     tipo\n");
+		fprintf(tsr," posicion    cadena\n");
+
+		printTokens(root,tks);
+		printSimbolos(tablaSim,tsm);
+		printStrings(tablaStr,tsr);
+
+		fclose(tks);
+		fclose(tsm);
+		fclose(tsr);		
 	}
 }
