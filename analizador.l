@@ -40,6 +40,7 @@ void printTokens(tokenList root,FILE *tks);
 char posPalRes(char string[]);
 void printSimbolos(tablaS root,FILE *tsm);
 void printStrings(tablaC root,FILE *tsr);
+int posOpRel(char *string);
 
 %}
 
@@ -54,6 +55,9 @@ realSe ([0-9]+\.|\.[0-9])[0-9]*
 realCe ({decimal}|{realSe})E{decimal}
 real ({realSe}|{realCe})
 salto \n
+opAsig :=
+opRel (>(=|<)?|<=?|=)
+opAri [+\-*/]
 error [^ ]
 %option noyywrap
 
@@ -66,6 +70,9 @@ error [^ ]
 {palRes} {fillList(&root,0,posPalRes(yytext));}
 {decimal} {fillList(&root,7,atoi(yytext));}
 {real} {fillList(&root,8,atof(yytext));}
+{opAsig} {fillList(&root,2,0);}
+{opAri} {fillList(&root,4,yytext[0]);}
+{opRel} {fillList(&root,3,posOpRel(yytext));}
 {salto} {lin++;}
 {error} {printf("Error en linea: %d %s no esta definida\n",lin,yytext);}
 
@@ -96,6 +103,29 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	}
 	else if(!strcmp((*root)->simbolo,sim)) return pos;
 	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
+}
+
+int posOpRel(char *string){
+	switch (string[0]){
+		case '>':
+			switch (string[1]){
+				case '=':
+					return 2;
+				case '<':
+					return 5;
+				default:
+					return 0;
+			}
+		case '<':
+			switch (string[1]){
+				case '=':
+					return 3;
+				default:
+					return 1;
+			}
+		default:
+			return 4;
+	}
 }
 
 int addString(tablaC *root,char string[], int pos){
@@ -186,6 +216,8 @@ main(int argc, char *argv[]){
 		fprintf(tsm," posicion    simbolo     tipo\n");
 		fprintf(tsr," posicion    cadena\n");
 
+		printf("\n <<< -------- Lista de tokens -------- >>>\n");
+		printf("(clase,valor)\n");
 		printTokens(root,tks);
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
