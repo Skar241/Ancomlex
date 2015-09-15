@@ -1,8 +1,20 @@
 %{
 
+/**********************************************************************
+*		Analizador lexico de un lenguaje definido en clase
+*		Elaborado por: Diaz Ramirez Oscar Antonio
+*		inicio: 10/09/2015 20:00    fin: 15/09/2015 17:30
+*		Escrito en Sublime Text 3
+*		Compilacion:
+*			flex analizador.l
+*			gcc lex.yy.c -o analizador -lfl
+*			./analizador archivo
+*			
+//**********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 
+//Definicion de la lista de tokens
 typedef struct snodo{
         char clase;
         double valor;
@@ -12,6 +24,7 @@ typedef tnodo *tokenList;
 
 tokenList root = NULL;
 
+//Definicion de la tabla de simbolos
 typedef struct Stable{
         char simbolo[17];
         int pos;
@@ -22,6 +35,7 @@ typedef SBtable *tablaS;
 
 tablaS tablaSim = NULL;
 
+//Definicion de la tabla de cadenas
 typedef struct Ctable{
         char *string;
         int pos;
@@ -31,8 +45,9 @@ typedef STtable *tablaC;
 
 tablaC tablaStr = NULL;
 
-int lin=1;
+int lin=1;  //contador de lineas
 
+/*************************** Encabezado de Funciones ************************/
 void fillList(tokenList *cabeza,char cl, double val);
 int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
 int addString(tablaC *root,char string[], int pos);
@@ -40,10 +55,11 @@ void printTokens(tokenList root,FILE *tks);
 char posPalRes(char string[]);
 void printSimbolos(tablaS root,FILE *tsm);
 void printStrings(tablaC root,FILE *tsr);
-int posOpRel(char *string);
+char posOpRel(char *string);
 
 %}
 
+/************ Expresiones regulares que definen el lenguaje ***************/
 cadenas \"[^\n"]+\"
 comenta ¡[^\n!]+!
 identif [a-zA-Z]{1,16}
@@ -79,7 +95,6 @@ error [^ ]
 
 %%
 
-// Lista de tokens
 
 //Recibe un apuntador, clase, valor; Produce lista de tokens
 void fillList(tokenList *cabeza,char cl, double val){
@@ -91,6 +106,8 @@ void fillList(tokenList *cabeza,char cl, double val){
      *cabeza=nuevo;
      }
 
+//Recibe apuntador, simbolo, posicion(estimada), tipo de dato
+//Produce tabla de simbolos y retorna posicion en la tabla del elemento
 int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	if(*root==NULL){
 		tablaS nuevo;
@@ -106,7 +123,8 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
 }
 
-int posOpRel(char *string){
+//Recibe operador relacional, retorna su posicion en la tabla
+char posOpRel(char *string){
 	switch (string[0]){
 		case '>':
 			switch (string[1]){
@@ -129,6 +147,8 @@ int posOpRel(char *string){
 	}
 }
 
+//Recibe apuntador, cadena y posicion(estimada)
+//Produce tabla de cadenas y retorna la posicion en la tabla de cadenas
 int addString(tablaC *root,char string[], int pos){
 	if(*root==NULL){
 		tablaC nuevo;
@@ -143,7 +163,8 @@ int addString(tablaC *root,char string[], int pos){
 	else return addString(&((*root)->sig),string,pos+1);
 }
 
-//Recibe lista de token, no produce nada, solo imprime
+//Recibe lista de token, imprime en pantalla y en .tks(archivo de tokens)
+//No produce nada
 void printTokens(tokenList root,FILE *tks){
 	if(root==NULL)
 		return;
@@ -162,6 +183,8 @@ void printTokens(tokenList root,FILE *tks){
 	}
 }
 
+//Recibe tabla de simbolos, imprime en .tsm(archivo de simbolos)
+//No produce nada
 void printSimbolos(tablaS root,FILE *tsm){
 	if(root==NULL)
 		return;
@@ -170,6 +193,9 @@ void printSimbolos(tablaS root,FILE *tsm){
 		printSimbolos(root->sig,tsm);
 	}
 }
+
+//Recibe tabla de cadenas, imprime en .tsr(archivo de cadenas)
+//No produce nada
 void printStrings(tablaC root,FILE *tsr){
 	if(root==NULL)
 		return;
@@ -179,6 +205,7 @@ void printStrings(tablaC root,FILE *tsr){
 	}
 }
 
+//Recibe palabra reservada, produce su posicion en la tabla
 char posPalRes(char string[]){
 	char palRes[][13]={"_corto","_desde","_entero","_finmientras",
 					  "_finsi","_hasta","_haz","_incremento","_largo",
@@ -197,7 +224,7 @@ char posPalRes(char string[]){
 	}
 }
 
-
+//Recibe archivo a compilar, no produce nada
 main(int argc, char *argv[]){
 	if((yyin = fopen(argv[1],"r"))== NULL)
 		printf("No se puede abrir el archivo \n"); 
@@ -220,6 +247,7 @@ main(int argc, char *argv[]){
 		FILE *tsm = fopen(arch2,"w");
 		FILE *tsr = fopen(arch3,"w");
 
+		//inicio de archivos
 		fprintf(tks," clase valor\n");
 		fprintf(tsm," posicion    simbolo     tipo\n");
 		fprintf(tsr," posicion    cadena\n");
