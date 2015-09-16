@@ -2,7 +2,10 @@
 
 /**********************************************************************
 *		Analizador lexico de un lenguaje definido en clase
-*		Elaborado por: Diaz Ramirez Oscar Antonio
+*		Elaborado por: 
+*			Diaz Ramirez Oscar Antonio
+*
+*
 *		inicio: 10/09/2015 20:00    fin: 15/09/2015 17:30
 *		Escrito en Sublime Text 3
 *		Compilacion:
