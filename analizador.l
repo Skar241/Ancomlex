@@ -48,18 +48,27 @@ typedef STtable *tablaC;
 
 tablaC tablaStr = NULL;
 
+typedef struct STRING{
+	char atom;
+	struct STRING *sig;
+	}STR;
+typedef STR *atm;
+
+atm atomos = NULL;
+
 int lin=1;  //contador de lineas
 
 /*************************** Encabezado de Funciones ************************/
 void fillList(tokenList *cabeza,char cl, double val);
 int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
 int addString(tablaC *root,char string[], int pos);
+void addAtomo(atm *root,char atomo);
 void printTokens(tokenList root,FILE *tks);
 char posPalRes(char string[]);
 void printSimbolos(tablaS root,FILE *tsm);
 void printStrings(tablaC root,FILE *tsr);
 char posOpRel(char *string);
-
+void printAtomos(atm atomos);
 %}
 
 /************ Expresiones regulares que definen el lenguaje ***************/
@@ -83,16 +92,40 @@ error [^ ]
 
 %%
 
-{cadenas} {fillList(&root,6,addString(&tablaStr,yytext,0));}
+{cadenas} {fillList(&root,6,addString(&tablaStr,yytext,0));
+		   addAtomo(&atomos,'y');
+		  }
+
 {comenta} {;}
-{identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0,"  "));}
-{simEsp} {fillList(&root,5,yytext[0]);}
+
+{identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0,"  "));
+		   addAtomo(&atomos,'a');
+		   }
+
+{simEsp} {fillList(&root,5,yytext[0]);
+		  addAtomo(&atomos,yytext[0]);
+}
+
 {palRes} {fillList(&root,0,posPalRes(yytext));}
-{decimal} {fillList(&root,7,atoi(yytext));}
-{real} {fillList(&root,8,atof(yytext));}
-{opAsig} {fillList(&root,2,0);}
-{opAri} {fillList(&root,4,yytext[0]);}
+
+{decimal} {fillList(&root,7,atoi(yytext));
+		   addAtomo(&atomos,'x');
+}
+
+{real} {fillList(&root,8,atof(yytext));
+		addAtomo(&atomos,'z');
+}
+
+{opAsig} {fillList(&root,2,0);
+		  addAtomo(&atomos,'=');
+}
+
+{opAri} {fillList(&root,4,yytext[0]);
+		 addAtomo(&atomos,yytext[0]);
+}
+
 {opRel} {fillList(&root,3,posOpRel(yytext));}
+
 {salto} {lin++;}
 {error} {printf("\nError en linea: %d %s no esta definida\n",lin,yytext);}
 
@@ -124,6 +157,18 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	}
 	else if(!strcmp((*root)->simbolo,sim)) return pos;
 	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
+}
+
+void addAtomo(atm *root,char atomo){
+	if(*root==NULL){
+		atm nuevo;
+		nuevo = malloc(sizeof(STR));
+		nuevo->atom = atomo;
+		*root = nuevo;
+		return;
+	}
+	else
+		addAtomo(&((*root)->sig),atomo);
 }
 
 //Recibe operador relacional, retorna su posicion en la tabla
@@ -230,6 +275,18 @@ char posPalRes(char string[]){
 	}
 }
 
+void printAtomos(atm atomos){
+	if(atomos->atom == '\0'){
+		printf("\n");
+		return;
+	}
+	else{
+		printf("%c",atomos->atom);
+		printAtomos(atomos->sig);
+		return;
+	}
+}
+
 //Recibe archivo a compilar, no produce nada
 main(int argc, char *argv[]){
 	if((yyin = fopen(argv[1],"r"))== NULL)
@@ -263,6 +320,10 @@ main(int argc, char *argv[]){
 		printTokens(root,tks);
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
+
+		addAtomo(&atomos,'\0');
+		printAtomos(atomos);
+
 
 		fclose(tks);
 		fclose(tsm);
