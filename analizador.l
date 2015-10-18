@@ -68,7 +68,7 @@ comenta ¡[^\n!]+!
 identif [a-zA-Z]{1,16}
 simEsp [\[\],\.\(\)]
 tipo entero|real|simbolo|largo|corto
-control si|sino|finsi|mientras|finmientras|haz|desde|hasta|incremento
+control si|sino|finsi|mientras|finmientras|haz|desde|hasta|incremento|findesde
 palRes _({tipo}|{control})
 decimal (-|\+)?[0-9]+
 realSe ([0-9]+\.|\.[0-9])[0-9]*
@@ -216,6 +216,9 @@ char posPalRes(char string[]){
 	char flg;
 	char i;
 	
+	if(!strcmp(string,"_findesde"))
+		return 14;
+
 	if(string[1]<105)
 		flg =0;
 	else
