@@ -64,10 +64,10 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
 int addString(tablaC *root,char string[], int pos);
 void addAtomo(atm *root,char atomo);
 void printTokens(tokenList root,FILE *tks);
-char posPalRes(char string[]);
+char posPalRes(char string[],char *sim);
 void printSimbolos(tablaS root,FILE *tsm);
 void printStrings(tablaC root,FILE *tsr);
-char posOpRel(char *string);
+char posOpRel(char *string,char *sim);
 void printAtomos(atm atomos);
 %}
 
@@ -79,9 +79,9 @@ simEsp [\[\],\.\(\)]
 tipo entero|real|simbolo|largo|corto
 control si|sino|finsi|mientras|finmientras|haz|desde|hasta|incremento|findesde
 palRes _({tipo}|{control})
-decimal (-|\+)?[0-9]+
+decimal [0-9]+
 realSe ([0-9]+\.|\.[0-9])[0-9]*
-realCe ({decimal}|{realSe})E{decimal}
+realCe ({decimal}|{realSe})E(-|\+)?{decimal}
 real ({realSe}|{realCe})
 salto \n
 opAsig :=
@@ -106,7 +106,10 @@ error [^ ]
 		  addAtomo(&atomos,yytext[0]);
 }
 
-{palRes} {fillList(&root,0,posPalRes(yytext));}
+{palRes} {char sim;
+		  fillList(&root,0,posPalRes(yytext,&sim));
+		  addAtomo(&atomos,sim);
+		 }
 
 {decimal} {fillList(&root,7,atoi(yytext));
 		   addAtomo(&atomos,'x');
@@ -124,7 +127,10 @@ error [^ ]
 		 addAtomo(&atomos,yytext[0]);
 }
 
-{opRel} {fillList(&root,3,posOpRel(yytext));}
+{opRel} {char sim;
+		 fillList(&root,3,posOpRel(yytext,&sim));
+		 addAtomo(&atomos,sim);
+		}
 
 {salto} {lin++;}
 {error} {printf("\nError en linea: %d %s no esta definida\n",lin,yytext);}
@@ -172,25 +178,31 @@ void addAtomo(atm *root,char atomo){
 }
 
 //Recibe operador relacional, retorna su posicion en la tabla
-char posOpRel(char *string){
+char posOpRel(char *string,char *sim){
 	switch (string[0]){
 		case '>':
 			switch (string[1]){
 				case '=':
+					*sim = 'q';
 					return 2;
 				case '<':
+					*sim = 'w';
 					return 5;
 				default:
+					*sim = 'j';
 					return 0;
 			}
 		case '<':
 			switch (string[1]){
 				case '=':
+					*sim = 'u';
 					return 3;
 				default:
+					*sim = 'k';
 					return 1;
 			}
 		default:
+			*sim = 'v';
 			return 4;
 	}
 }
@@ -254,15 +266,19 @@ void printStrings(tablaC root,FILE *tsr){
 }
 
 //Recibe palabra reservada, produce su posicion en la tabla
-char posPalRes(char string[]){
+char posPalRes(char string[],char *sim){
 	char palRes[][13]={"_corto","_desde","_entero","_finmientras",
 					  "_finsi","_hasta","_haz","_incremento","_largo",
 					  "_mientras","_real","_si","_simbolo","_sino"};
+	char atomo[] = "cdefbthplmrisn";
+
 	char flg;
 	char i;
 	
-	if(!strcmp(string,"_findesde"))
+	if(!strcmp(string,"_findesde")){
+		*sim = 'g';
 		return 14;
+	}
 
 	if(string[1]<105)
 		flg =0;
@@ -270,8 +286,10 @@ char posPalRes(char string[]){
 		flg = 7;
 
 	for(i=flg;i<14;i++){
-		if(!strcmp(string,palRes[i]))
+		if(!strcmp(string,palRes[i])){
+			*sim = atomo[i];
 			return i;
+		}
 	}
 }
 
