@@ -1,7 +1,7 @@
 %{
 
 /**********************************************************************
-*		Analizador lexico de un lenguaje definido en clase
+*		Analizador lexico  sintactico de un lenguaje definido en clase
 *		Elaborado por: 
 *			Diaz Ramirez Oscar Antonio
 *
@@ -147,6 +147,16 @@ void fillList(tokenList *cabeza,char cl, double val){
      nuevo->sig=*cabeza;
      *cabeza=nuevo;
      }
+
+char avanzaString(atm *root){
+	if((*root)->atom == '┤')
+		return '┤';
+	else{
+		char tmp = (*root)->atom;
+		*root = (*root)->sig;
+		return tmp;
+	}
+}
 
 //Recibe apuntador, simbolo, posicion(estimada), tipo de dato
 //Produce tabla de simbolos y retorna posicion en la tabla del elemento
@@ -294,8 +304,8 @@ char posPalRes(char string[],char *sim){
 }
 
 void printAtomos(atm atomos){
-	if(atomos->atom == '\0'){
-		printf("\n");
+	if(atomos->atom == '┤'){
+		printf("┤\n");
 		return;
 	}
 	else{
@@ -339,7 +349,7 @@ main(int argc, char *argv[]){
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
 
-		addAtomo(&atomos,'\0');
+		addAtomo(&atomos,'┤');
 		printAtomos(atomos);
 
 
