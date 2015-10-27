@@ -50,6 +50,7 @@ tablaC tablaStr = NULL;
 
 typedef struct STRING{
 	char atom;
+	int linea;
 	struct STRING *sig;
 	}STR;
 typedef STR *atm;
@@ -57,18 +58,49 @@ typedef STR *atm;
 atm atomos = NULL;
 
 int lin=1;  //contador de lineas
+int linErr;/// variable que se encarga de decir en que linea esta el error
+char c;// variable de atomo actual
+int onError = 0;//Bandera de errores
 
 /*************************** Encabezado de Funciones ************************/
 void fillList(tokenList *cabeza,char cl, double val);
 int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
 int addString(tablaC *root,char string[], int pos);
-void addAtomo(atm *root,char atomo);
+void addAtomo(atm *root,char atomo,int lin);
 void printTokens(tokenList root,FILE *tks);
 char posPalRes(char string[],char *sim);
 void printSimbolos(tablaS root,FILE *tsm);
 void printStrings(tablaC root,FILE *tsr);
 char posOpRel(char *string,char *sim);
-void printAtomos(atm atomos);
+void printAtomos(atm atomos, FILE *ast);
+char comparacionAtm(char atomo,char *atomos);
+void Error(char *msj);
+/**************************** Funciones del paser ****************************/
+void Parser();
+void S();
+void D();
+void DP();
+void TPP();
+void N();
+void B();
+void J();
+void L();
+void P();
+void Z();
+void PP();
+void M();
+void H();
+void I();
+void R();
+void G();
+void FP();
+void A();
+void O();
+void E();
+void EP();
+void T();
+void TP();
+void F();
 %}
 
 /************ Expresiones regulares que definen el lenguaje ***************/
@@ -93,43 +125,43 @@ error [^ ]
 %%
 
 {cadenas} {fillList(&root,6,addString(&tablaStr,yytext,0));
-		   addAtomo(&atomos,'y');
+		   addAtomo(&atomos,'y',lin);
 		  }
 
 {comenta} {;}
 
 {identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0,"  "));
-		   addAtomo(&atomos,'a');
+		   addAtomo(&atomos,'a',lin);
 		   }
 
 {simEsp} {fillList(&root,5,yytext[0]);
-		  addAtomo(&atomos,yytext[0]);
+		  addAtomo(&atomos,yytext[0],lin);
 }
 
 {palRes} {char sim;
 		  fillList(&root,0,posPalRes(yytext,&sim));
-		  addAtomo(&atomos,sim);
+		  addAtomo(&atomos,sim,lin);
 		 }
 
 {decimal} {fillList(&root,7,atoi(yytext));
-		   addAtomo(&atomos,'x');
+		   addAtomo(&atomos,'x',lin);
 }
 
 {real} {fillList(&root,8,atof(yytext));
-		addAtomo(&atomos,'z');
+		addAtomo(&atomos,'z',lin);
 }
 
 {opAsig} {fillList(&root,2,0);
-		  addAtomo(&atomos,'=');
+		  addAtomo(&atomos,'=',lin);
 }
 
 {opAri} {fillList(&root,4,yytext[0]);
-		 addAtomo(&atomos,yytext[0]);
+		 addAtomo(&atomos,yytext[0],lin);
 }
 
 {opRel} {char sim;
 		 fillList(&root,3,posOpRel(yytext,&sim));
-		 addAtomo(&atomos,sim);
+		 addAtomo(&atomos,sim,lin);
 		}
 
 {salto} {lin++;}
@@ -148,11 +180,16 @@ void fillList(tokenList *cabeza,char cl, double val){
      *cabeza=nuevo;
      }
 
+//Funcion que se encarga de avanzar en el string, recibe lista de caracteres
+//Produce el caracter primero en la fila
 char avanzaString(atm *root){
-	if((*root)->atom == '┤')
-		return '┤';
+	if((*root)->atom == '@'){
+		linErr = (*root)->linea;
+		return '@';
+	}
 	else{
 		char tmp = (*root)->atom;
+		linErr = (*root)->linea;
 		*root = (*root)->sig;
 		return tmp;
 	}
@@ -175,16 +212,19 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
 }
 
-void addAtomo(atm *root,char atomo){
+//Recibe apuntador a cadena de atomos, atomos, linea
+//Produce lista de atomos
+void addAtomo(atm *root,char atomo,int lin){
 	if(*root==NULL){
 		atm nuevo;
 		nuevo = malloc(sizeof(STR));
 		nuevo->atom = atomo;
+		nuevo->linea = lin;
 		*root = nuevo;
 		return;
 	}
 	else
-		addAtomo(&((*root)->sig),atomo);
+		addAtomo(&((*root)->sig),atomo,lin);
 }
 
 //Recibe operador relacional, retorna su posicion en la tabla
@@ -303,17 +343,417 @@ char posPalRes(char string[],char *sim){
 	}
 }
 
-void printAtomos(atm atomos){
-	if(atomos->atom == '┤'){
-		printf("┤\n");
+//Recibe lista de atomos, y archivo
+//Produce cadena de atomos en un archivo .ast
+void printAtomos(atm atomos,FILE *ast){
+	if(atomos->atom == '@'){
+		fprintf(ast,"@\n");
 		return;
 	}
 	else{
-		printf("%c",atomos->atom);
-		printAtomos(atomos->sig);
+		fprintf(ast,"%c",atomos->atom);
+		printAtomos(atomos->sig,ast);
 		return;
 	}
 }
+
+//Recibe caracter y una cadena
+//Produce 0 si no esta el caracter en esa cadena y 1 si lo encuentra
+char comparacionAtm(char atomo,char *atomos){
+	char i=0;
+	while(atomos[i]!='\0'){
+		if(atomo == atomos[i])
+			return 1;
+		i++;
+	}
+	return 0;
+}
+
+//REcibe mensaje y escribe en la linea donde se detecto el error, aumenta la bandera de errores
+void Error(char *msj){
+	printf("%s en linea %d\n",msj,linErr);
+	onError++;
+}
+
+/////////////////////////////////////////////////////// Funciones de Produciones /////////////////////////////////
+// Funcion Parser, se encarga de mandar a llamar el no terminal inicial de la gramatica
+void Parser(){
+	c = avanzaString(&atomos);
+	S();
+	if(c == '@')
+		printf("Compilacion Terminada\n");
+	else
+		printf("Compilacion Terminada con Error\n");
+	if(onError)
+		printf("Se detectaron %d errores en total\n",onError);
+	else
+		printf("No se detectaron errores\n");
+}
+
+//diferentes producciones de la gramatica, en algunas se omite evaluar el c.s. pues de lo contrario
+//el compilador se detendria al primer error y no se autorecuperaria
+void S(){
+	D();
+	DP();
+	P();
+	return;
+}
+
+void D(){
+	TPP();
+	if(c == 'a')
+		c = avanzaString(&atomos);
+	else
+		Error("No se ha detectado identificador");
+	B();
+	L();
+	return;
+}
+
+void DP(){
+	if(comparacionAtm(c,"srlce")){
+		D();
+		DP();
+	}
+	else if(comparacionAtm(c,".mhida")){}
+	else{
+		D();
+		DP();
+	}
+	return;
+}
+
+void TPP(){
+	if(comparacionAtm(c,"cle")){
+		N();
+		if(c == 'e')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado tipo de dato");
+	}
+	else if(comparacionAtm(c,"sr"))
+		c = avanzaString(&atomos);
+	else
+		Error("No se ha encontrado tipo de dato");
+	return;
+}
+
+void N(){
+	if(comparacionAtm(c,"cl"))
+		c = avanzaString(&atomos);
+	else if(c == 'e'){}
+	else
+		Error("No se ha encontrado tipo de dato");
+	return;
+}
+
+
+void B(){
+	if(c == '='){
+		c = avanzaString(&atomos);
+		J();
+	}
+	else if(comparacionAtm(c,",.")){}
+	else{
+		Error("No se ha encontrado = ");
+		J();
+	}
+	return;
+}
+
+void J(){
+	if(comparacionAtm(c,"xyz"))
+		c = avanzaString(&atomos);
+	else
+		Error("No se ha encontrado constante");
+	return;
+}
+
+void L(){
+	if(c == ','){
+		c = avanzaString(&atomos);
+		if(c == 'a')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado identificador");
+		B();
+		L();
+	}
+	else if(c == '.')
+		c =avanzaString(&atomos);
+	else if(c == 'a'){
+		c = avanzaString(&atomos);
+		Error("No se ha encontrado ,");
+		B();
+		L();
+	}
+	else
+		Error("No se ha encontrado .");
+	return;
+}
+
+void P(){
+	if(comparacionAtm(c,".mhida")){
+		Z();
+		PP();
+	}
+	else
+		Error("No se ha encontrado palabra reservada o .");
+	return;
+}
+
+void Z(){
+	switch(c){
+		case '.':
+			c = avanzaString(&atomos);
+			break;
+		case 'm':
+			M();
+			break;
+		case 'h':
+			H();
+			break;
+		case 'i':
+			I();
+			break;
+		case 'd':
+			FP();
+			break;
+		case 'a':
+			A();
+			break;
+		default :
+			Error("No se ha encontrado palabra reservada o .");
+	}
+	return;
+}
+
+void PP(){
+	if(comparacionAtm(c,".mhida")){
+		Z();
+		PP();
+	}
+	else if(comparacionAtm(c,"@ftnbg")){}
+	else
+		Error("No se ha encontrado palabra reservada o .");
+	return;
+}
+
+void M(){
+	if(c == 'm'){
+		c = avanzaString(&atomos);
+		if(c == '(')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado (");
+		R(0);
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado )");
+		P();
+		if(c == 'f')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado _finmientras");
+	}
+	else
+		Error("No se ha encontrado _mientras");
+	return;
+}
+
+void H(){
+	if(c == 'h'){
+		c = avanzaString(&atomos);
+		P();
+		if(c == 't')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha encontrado _hasta");
+		if(c == '(')
+			c = avanzaString(&atomos);
+		else
+			Error("Falta (");
+		R(0);
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else
+			Error("Falta )");
+		if(c == '.')
+			c = avanzaString(&atomos);
+		else
+			Error("falta .");
+	}
+	else
+		Error("No se ha encontrado _haz");
+	return;
+}
+
+void I(){
+	if(c == 'i'){
+		c = avanzaString(&atomos);
+		if(c == '(')
+			c = avanzaString(&atomos);
+		else
+			Error("Falta (");
+		R(0);
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else 
+			Error("Falta )");
+		P();
+		G();
+	}
+	return;
+}
+
+void G(){
+	if(c == 'n'){
+		c = avanzaString(&atomos);
+		P();
+		if(c == 'b')
+			c = avanzaString(&atomos);
+		else
+			Error("Falta _finsi");
+	}
+	else if(c == 'b')
+		c = avanzaString(&atomos);
+	else
+		Error("No se ha encontrado _sino");
+	return;
+}
+
+void FP(){
+	if(c == 'd'){
+		A();
+		if(c == 't')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado _hasta");
+		if(c == '(')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado (");
+		E();
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado )");
+		if(c == 'p')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado _incremento");
+		if(c == '(')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado (");
+		E();
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado )");
+		P();
+		if(c == 'g')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado _findesde");
+	}
+	else
+		Error("No se a detectado _desde");
+	return;
+}
+
+void A(){
+	if(c == 'a'){
+		c = avanzaString(&atomos);
+		if(c == '=')
+			c = avanzaString(&atomos);
+		else
+			Error("No se ha detectado :=");
+		E();
+		if(c == '.')
+			c = avanzaString(&atomos);
+		else
+			Error("No a detectado .");
+	}
+}
+
+void R(){
+	E();
+	O();
+	E();
+	return;
+}
+
+void O(){
+	if(comparacionAtm(c,"jkquvw"))
+		c = avanzaString(&atomos);
+	else
+		Error("No se ha encontrado Op. Rel.");
+	return;
+}
+
+void E(){
+	T();
+	EP();
+	return;
+}
+
+
+void EP(){
+	if(comparacionAtm(c,"+-")){
+		c = avanzaString(&atomos);
+		T();
+		EP();
+	}
+	else if(comparacionAtm(c,").jkquvw")){}
+	else{
+		T();
+		EP();
+	}
+	return;
+}
+
+void T(){
+	F();
+	TP();
+}
+
+void TP(){
+	if(comparacionAtm(c,"*/")){
+		c = avanzaString(&atomos);
+		F();
+		TP();
+	}
+	else if(comparacionAtm(c,"+-).jkquvw")){}
+	else{
+		F();
+		TP();
+	}
+	return;
+}
+
+void F(){
+	if(c == '('){
+		c = avanzaString(&atomos);
+		E();
+		if(c == ')')
+			c = avanzaString(&atomos);
+		else
+			Error("Falta )");
+	}
+	else if(c == 'a')
+		c = avanzaString(&atomos);
+	else if(comparacionAtm(c,"xyz"))
+		J();
+	else
+		Error("No se encontro operando");
+	return;
+
+}
+
+/////////////////////////////////////////////////////// Fin de Produciones
+
 
 //Recibe archivo a compilar, no produce nada
 main(int argc, char *argv[]){
@@ -325,23 +765,28 @@ main(int argc, char *argv[]){
 		char arch1[strlen(argv[1])+5];
 		char arch2[strlen(argv[1])+5];
 		char arch3[strlen(argv[1])+5];
+		char arch4[strlen(argv[1])+5];
 
 		strcpy(arch1,argv[1]);
 		strcpy(arch2,argv[1]);
 		strcpy(arch3,argv[1]);
+		strcpy(arch4,argv[1]);
 
 		strcat(arch1,".tks");
 		strcat(arch2,".tsm");
 		strcat(arch3,".tsr");
+		strcat(arch4,".ast");
 
 		FILE *tks = fopen(arch1,"w");
 		FILE *tsm = fopen(arch2,"w");
 		FILE *tsr = fopen(arch3,"w");
+		FILE *ast = fopen(arch4,"w");
 
 		//inicio de archivos
 		fprintf(tks," clase valor\n");
 		fprintf(tsm," posicion    simbolo     tipo\n");
 		fprintf(tsr," posicion    cadena\n");
+		fprintf(ast," Cadena de atomos \n");
 
 		printf("\n <<< -------- Lista de tokens -------- >>>\n");
 		printf("(clase,valor)\n");
@@ -349,12 +794,14 @@ main(int argc, char *argv[]){
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
 
-		addAtomo(&atomos,'┤');
-		printAtomos(atomos);
+		addAtomo(&atomos,'@',lin);
+		printAtomos(atomos,ast);
+		Parser();
 
 
 		fclose(tks);
 		fclose(tsm);
-		fclose(tsr);		
+		fclose(tsr);
+		fclose(ast);		
 	}
 }
