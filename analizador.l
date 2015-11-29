@@ -172,37 +172,21 @@ error [^ 	]
 
 %%
 
+///******************* Zona de push y Add ************************///
 
-//Recibe un apuntador, clase, valor; Produce lista de tokens
-void fillList(tokenList *cabeza,char cl, double val){
-	if(*cabeza == NULL){
-    	tokenList nuevo;
-    	nuevo=malloc(sizeof(tnodo));
-    	nuevo->clase=cl;
-    	nuevo->valor=val;
-    	nuevo->sig=*cabeza;
-    	*cabeza=nuevo;
-    }
-    else
-    	fillList(&((*cabeza)->sig),cl,val);
-}
-
-//Funcion que se encarga de avanzar en el string, recibe lista de caracteres
-//Produce el caracter primero en la fila
-char avanzaString(atm *root){
-	if((*root)->atom == '@'){
-		linErr = (*root)->linea;
-		fprintf(ast,"@\n");
-		return '@';
+//Recibe apuntador a cadena de atomos, atomos, linea
+//Produce lista de atomos
+void addAtomo(atm *root,char atomo,int lin){
+	if(*root==NULL){
+		atm nuevo;
+		nuevo = malloc(sizeof(STR));
+		nuevo->atom = atomo;
+		nuevo->linea = lin;
+		*root = nuevo;
+		return;
 	}
-	else{
-		char tmp = (*root)->atom;
-		linErr = (*root)->linea;
-		*root = (*root)->sig;
-		atm tmoA = *root;
-		printAtomos(tmoA,ast);
-		return tmp;
-	}
+	else
+		addAtomo(&((*root)->sig),atomo,lin);
 }
 
 //Recibe apuntador, simbolo, posicion(estimada), tipo de dato
@@ -222,19 +206,56 @@ int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
 	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
 }
 
-//Recibe apuntador a cadena de atomos, atomos, linea
-//Produce lista de atomos
-void addAtomo(atm *root,char atomo,int lin){
+//Recibe apuntador, cadena y posicion(estimada)
+//Produce tabla de cadenas y retorna la posicion en la tabla de cadenas
+int addString(tablaC *root,char string[], int pos){
 	if(*root==NULL){
-		atm nuevo;
-		nuevo = malloc(sizeof(STR));
-		nuevo->atom = atomo;
-		nuevo->linea = lin;
-		*root = nuevo;
-		return;
+		tablaC nuevo;
+		nuevo = malloc(sizeof(STtable));
+		nuevo->string=malloc(strlen(string)+1);
+		strcpy(nuevo->string,string);
+		nuevo->pos=pos;
+		nuevo->sig=NULL;
+		*root=nuevo;
+		return pos;
 	}
-	else
-		addAtomo(&((*root)->sig),atomo,lin);
+	else return addString(&((*root)->sig),string,pos+1);
+}
+
+//Recibe un apuntador, clase, valor; Produce lista de tokens
+void fillList(tokenList *cabeza,char cl, double val){
+	if(*cabeza == NULL){
+    	tokenList nuevo;
+    	nuevo=malloc(sizeof(tnodo));
+    	nuevo->clase=cl;
+    	nuevo->valor=val;
+    	nuevo->sig=*cabeza;
+    	*cabeza=nuevo;
+    }
+    else
+    	fillList(&((*cabeza)->sig),cl,val);
+}
+
+///******************* Fin de push y Add *************************///
+
+///*****************  Zona de pop y consulta  ********************///
+
+//Funcion que se encarga de avanzar en el string, recibe lista de caracteres
+//Produce el caracter primero en la fila
+char avanzaString(atm *root){
+	if((*root)->atom == '@'){
+		linErr = (*root)->linea;
+		fprintf(ast,"@\n");
+		return '@';
+	}
+	else{
+		char tmp = (*root)->atom;
+		linErr = (*root)->linea;
+		*root = (*root)->sig;
+		atm tmoA = *root;
+		printAtomos(tmoA,ast);
+		return tmp;
+	}
 }
 
 //Recibe operador relacional, retorna su posicion en la tabla
@@ -267,63 +288,6 @@ char posOpRel(char *string,char *sim){
 	}
 }
 
-//Recibe apuntador, cadena y posicion(estimada)
-//Produce tabla de cadenas y retorna la posicion en la tabla de cadenas
-int addString(tablaC *root,char string[], int pos){
-	if(*root==NULL){
-		tablaC nuevo;
-		nuevo = malloc(sizeof(STtable));
-		nuevo->string=malloc(strlen(string)+1);
-		strcpy(nuevo->string,string);
-		nuevo->pos=pos;
-		nuevo->sig=NULL;
-		*root=nuevo;
-		return pos;
-	}
-	else return addString(&((*root)->sig),string,pos+1);
-}
-
-//Recibe lista de token, imprime en pantalla y en .tks(archivo de tokens)
-//No produce nada
-void printTokens(tokenList root,FILE *tks){
-	if(root==NULL)
-		return;
-	else{
-		switch (root->clase){
-			case 8:
-				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
-				//printf("(%d,%f)\n",root->clase,root->valor);
-				break;
-			default:
-				fprintf(tks,"   %d     %d  \n",root->clase,(int)root->valor);
-				//printf("(%d,%d)\n",root->clase,(int)root->valor);
-		}
-		printTokens(root->sig,tks);
-	}
-}
-
-//Recibe tabla de simbolos, imprime en .tsm(archivo de simbolos)
-//No produce nada
-void printSimbolos(tablaS root,FILE *tsm){
-	if(root==NULL)
-		return;
-	else{
-		fprintf(tsm,"  %d       %s         \n",root->pos,root->simbolo);
-		printSimbolos(root->sig,tsm);
-	}
-}
-
-//Recibe tabla de cadenas, imprime en .tsr(archivo de cadenas)
-//No produce nada
-void printStrings(tablaC root,FILE *tsr){
-	if(root==NULL)
-		return;
-	else{
-		fprintf(tsr,"    %d      %s        \n",root->pos,root->string);
-		printStrings(root->sig,tsr);
-	}
-}
-
 //Recibe palabra reservada, produce su posicion en la tabla
 char posPalRes(char string[],char *sim){
 	char palRes[][13]={"_corto","_desde","_entero","_finmientras",
@@ -352,6 +316,10 @@ char posPalRes(char string[],char *sim){
 	}
 }
 
+///****************   Fin de zona de pop    **********************///
+
+///**************   Zona de print y printf  **********************///
+
 //Recibe lista de atomos, y archivo
 //Produce cadena de atomos en un archivo .ast
 void printAtomos(atm atomos,FILE *ast){
@@ -366,6 +334,50 @@ void printAtomos(atm atomos,FILE *ast){
 	}
 }
 
+//Recibe tabla de simbolos, imprime en .tsm(archivo de simbolos)
+//No produce nada
+void printSimbolos(tablaS root,FILE *tsm){
+	if(root==NULL)
+		return;
+	else{
+		fprintf(tsm,"  %d       %s         \n",root->pos,root->simbolo);
+		printSimbolos(root->sig,tsm);
+	}
+}
+
+//Recibe tabla de cadenas, imprime en .tsr(archivo de cadenas)
+//No produce nada
+void printStrings(tablaC root,FILE *tsr){
+	if(root==NULL)
+		return;
+	else{
+		fprintf(tsr,"    %d      %s        \n",root->pos,root->string);
+		printStrings(root->sig,tsr);
+	}
+}
+
+//Recibe lista de token, imprime en pantalla y en .tks(archivo de tokens)
+//No produce nada
+void printTokens(tokenList root,FILE *tks){
+	if(root==NULL)
+		return;
+	else{
+		switch (root->clase){
+			case 8:
+				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
+				//printf("(%d,%f)\n",root->clase,root->valor);
+				break;
+			default:
+				fprintf(tks,"   %d     %d  \n",root->clase,(int)root->valor);
+				//printf("(%d,%d)\n",root->clase,(int)root->valor);
+		}
+		printTokens(root->sig,tks);
+	}
+}
+
+///***************    Fin de zona de print  **********************///
+
+///***************    Funciones auxiliares  **********************///
 //Recibe caracter y una cadena
 //Produce 0 si no esta el caracter en esa cadena y 1 si lo encuentra
 char comparacionAtm(char atomo,char *atomos){
@@ -383,6 +395,8 @@ void Error(char *msj){
 	printf("%s en linea %d\n",msj,linErr);
 	onError++;
 }
+
+///***************   fin funciones auxiliares  **********************///
 
 /////////////////////////////////////////////////////// Funciones de Produciones /////////////////////////////////
 // Funcion Parser, se encarga de mandar a llamar el no terminal inicial de la gramatica
