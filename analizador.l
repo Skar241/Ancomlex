@@ -4,6 +4,7 @@
 *		Analizador lexico  sintactico de un lenguaje definido en clase
 *		Elaborado por: 
 *			Diaz Ramirez Oscar Antonio
+*			Partida Bañuelos Valentin
 *
 *
 *		inicio: 10/09/2015 20:00    fin: 15/09/2015 17:30
@@ -32,6 +33,7 @@ typedef struct Stable{
         char simbolo[17];
         int pos;
         char tipo[13];
+        char valInicial [16];
         struct Stable *sig;
         }SBtable;
 typedef SBtable *tablaS; 
@@ -173,13 +175,17 @@ error [^ 	]
 
 //Recibe un apuntador, clase, valor; Produce lista de tokens
 void fillList(tokenList *cabeza,char cl, double val){
-     tokenList nuevo;
-     nuevo=malloc(sizeof(tnodo));
-     nuevo->clase=cl;
-     nuevo->valor=val;
-     nuevo->sig=*cabeza;
-     *cabeza=nuevo;
-     }
+	if(*cabeza == NULL){
+    	tokenList nuevo;
+    	nuevo=malloc(sizeof(tnodo));
+    	nuevo->clase=cl;
+    	nuevo->valor=val;
+    	nuevo->sig=*cabeza;
+    	*cabeza=nuevo;
+    }
+    else
+    	fillList(&((*cabeza)->sig),cl,val);
+}
 
 //Funcion que se encarga de avanzar en el string, recibe lista de caracteres
 //Produce el caracter primero en la fila
@@ -283,7 +289,6 @@ void printTokens(tokenList root,FILE *tks){
 	if(root==NULL)
 		return;
 	else{
-		printTokens(root->sig,tks);
 		switch (root->clase){
 			case 8:
 				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
@@ -293,7 +298,7 @@ void printTokens(tokenList root,FILE *tks){
 				fprintf(tks,"   %d     %d  \n",root->clase,(int)root->valor);
 				//printf("(%d,%d)\n",root->clase,(int)root->valor);
 		}
-		
+		printTokens(root->sig,tks);
 	}
 }
 
@@ -813,6 +818,7 @@ main(int argc, char *argv[]){
 		printTokens(root,tks);
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
+
 
 		addAtomo(&atomos,'@',lin);
 		printAtomos(atomos,ast);
