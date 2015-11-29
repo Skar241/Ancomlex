@@ -61,6 +61,7 @@ int lin=1;  //contador de lineas
 int linErr;/// variable que se encarga de decir en que linea esta el error
 char c;// variable de atomo actual
 int onError = 0;//Bandera de errores
+FILE *ast;
 
 /*************************** Encabezado de Funciones ************************/
 void fillList(tokenList *cabeza,char cl, double val);
@@ -91,7 +92,7 @@ void PP();
 void M();
 void H();
 void I();
-void R();
+char R();
 void G();
 void FP();
 void A();
@@ -119,7 +120,7 @@ salto \n
 opAsig :=
 opRel (>(=|<)?|<=?|=)
 opAri [+\-*/]
-error [^ ]
+error [^ 	]
 %option noyywrap
 
 %%
@@ -185,12 +186,15 @@ void fillList(tokenList *cabeza,char cl, double val){
 char avanzaString(atm *root){
 	if((*root)->atom == '@'){
 		linErr = (*root)->linea;
+		fprintf(ast,"@\n");
 		return '@';
 	}
 	else{
 		char tmp = (*root)->atom;
 		linErr = (*root)->linea;
 		*root = (*root)->sig;
+		atm tmoA = *root;
+		printAtomos(tmoA,ast);
 		return tmp;
 	}
 }
@@ -283,11 +287,11 @@ void printTokens(tokenList root,FILE *tks){
 		switch (root->clase){
 			case 8:
 				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
-				printf("(%d,%f)\n",root->clase,root->valor);
+				//printf("(%d,%f)\n",root->clase,root->valor);
 				break;
 			default:
 				fprintf(tks,"   %d     %d  \n",root->clase,(int)root->valor);
-				printf("(%d,%d)\n",root->clase,(int)root->valor);
+				//printf("(%d,%d)\n",root->clase,(int)root->valor);
 		}
 		
 	}
@@ -417,8 +421,7 @@ void DP(){
 	}
 	else if(comparacionAtm(c,".mhida")){}
 	else{
-		D();
-		DP();
+		Error("No se puede continuar con la Compilacion");
 	}
 	return;
 }
@@ -545,12 +548,16 @@ void M(){
 		if(c == '(')
 			c = avanzaString(&atomos);
 		else
-			Error("No se ha encontrado (");
-		R(0);
+			Error("No se ha encontrado )");
+		
+		if(R())
+			Error("No se ha ingresado correctamente alguna relacion");
+		
 		if(c == ')')
 			c = avanzaString(&atomos);
 		else
 			Error("No se ha encontrado )");
+		
 		P();
 		if(c == 'f')
 			c = avanzaString(&atomos);
@@ -596,7 +603,10 @@ void I(){
 			c = avanzaString(&atomos);
 		else
 			Error("Falta (");
-		R(0);
+		
+		if(R())
+			Error("No se ha ingresado correctamente alguna relacion");
+
 		if(c == ')')
 			c = avanzaString(&atomos);
 		else 
@@ -625,6 +635,7 @@ void G(){
 
 void FP(){
 	if(c == 'd'){
+		c = avanzaString(&atomos);
 		A();
 		if(c == 't')
 			c = avanzaString(&atomos);
@@ -676,13 +687,17 @@ void A(){
 		else
 			Error("No a detectado .");
 	}
+	return;
 }
 
-void R(){
-	E();
-	O();
-	E();
-	return;
+char R(){
+	if(comparacionAtm(c,"(axzy")){
+		E();
+		O();
+		E();
+		return 0;
+	}
+	return 1;
 }
 
 void O(){
@@ -694,8 +709,10 @@ void O(){
 }
 
 void E(){
-	T();
-	EP();
+	if(comparacionAtm(c,"(axzy")){
+		T();
+		EP();
+	}
 	return;
 }
 
@@ -715,8 +732,11 @@ void EP(){
 }
 
 void T(){
-	F();
-	TP();
+	if(comparacionAtm(c,"(axzy")){
+		F();
+		TP();
+	}
+	return;
 }
 
 void TP(){
@@ -780,7 +800,7 @@ main(int argc, char *argv[]){
 		FILE *tks = fopen(arch1,"w");
 		FILE *tsm = fopen(arch2,"w");
 		FILE *tsr = fopen(arch3,"w");
-		FILE *ast = fopen(arch4,"w");
+		ast = fopen(arch4,"w");
 
 		//inicio de archivos
 		fprintf(tks," clase valor\n");
@@ -788,8 +808,8 @@ main(int argc, char *argv[]){
 		fprintf(tsr," posicion    cadena\n");
 		fprintf(ast," Cadena de atomos \n");
 
-		printf("\n <<< -------- Lista de tokens -------- >>>\n");
-		printf("(clase,valor)\n");
+		/*printf("\n <<< -------- Lista de tokens -------- >>>\n");
+		printf("(clase,valor)\n");*/
 		printTokens(root,tks);
 		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
