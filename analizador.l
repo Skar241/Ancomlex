@@ -131,6 +131,7 @@ opRel (>(=|<)?|<=?|=)
 opAri [+\-*/]
 error [^ 	]
 %option noyywrap
+/*"*/
 
 %%
 
@@ -374,7 +375,7 @@ void printSimbolos(tablaS root,FILE *tsm){
 	if(root==NULL)
 		return;
 	else{
-		fprintf(tsm,"  %d       %s         \n",root->pos,root->simbolo);
+		fprintf(tsm,"  %d            %s        %d      %s\n",root->pos,root->simbolo,root->tipo,root->valInicial);
 		printSimbolos(root->sig,tsm);
 	}
 }
@@ -441,8 +442,10 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 			else
 				sprintf((*root)->valInicial,"%e",num.valorN);
 		}
-		else if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)>0)
+		else if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)>0){
+			onError++;
 			printf("\nError, %s ha sido previamente inicializada",identificador);
+		}
 		else
 			asignaValorInicial(&((*root)->sig),identificador,num);
 	}
@@ -455,13 +458,16 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 void ATV(char tipo, char identificador[], numero num){
 	switch(tipo){
 		case 2: case 4: case 5:
-			if(num.tipoN != 2)
+			if(num.tipoN != 2 && num.tipoN != 4 && num.tipoN != 5){
+				onError++;
 				printf("\nError se asigna un real a %s se castea a int por defecto",identificador);
+			}
 		
 		case 10:
 			asignaValorInicial(&tablaSim,identificador,num);
 			break;
 		default:
+			onError++;
 			printf("\n Error tipos de datos incompatibles en %s",identificador);
 	}
 }
@@ -490,9 +496,9 @@ void Parser(){
 	c = avanzaString(&atomos);
 	S();
 	if(c == '@')
-		printf("Compilacion Terminada\n");
+		printf("\nCompilacion Terminada\n");
 	else
-		printf("Compilacion Terminada con Error\n");
+		printf("\nCompilacion Terminada con Error\n");
 	if(onError)
 		printf("Se detectaron %d errores en total\n",onError);
 	else
@@ -587,12 +593,16 @@ char N(){
 	char val=0,flg;
 	if(flg = comparacionAtm(c,"cl")){
 		c = avanzaString(&atomos);
-		if(flg)
+		if(flg == 1){
 			escribe("short");
-		else
+			val = 2;
+		}
+		else{
 			escribe("long");
+			val = 3;
+		}
 
-		val = (char) popToken(&root,&flg);
+		popToken(&root,&flg);
 	}
 	else if(c == 'e'){}
 	else
@@ -605,7 +615,7 @@ numero B(){
 	printf("\n toy B");
 	char flg;
 	numero tmp;
-	tmp.tipoN = 0;
+	tmp.tipoN = 2;
 	tmp.valorN = 0;
 	if(c == '='){
 		c = avanzaString(&atomos);
@@ -625,7 +635,7 @@ numero J(){
 	printf("\n toy J");
 	char flg;
 	numero tmp;
-	tmp.tipoN=0;
+	tmp.tipoN=2;
 	tmp.valorN=0;
 	if(flg = comparacionAtm(c,"xz")){
 		c = avanzaString(&atomos);
@@ -657,6 +667,7 @@ void L(char l){
 			strcpy(a," ");
 		}
 		tmp = B();
+		ATV(l,a,tmp);
 		L(l);
 	}
 	else if(c == '.'){
@@ -972,6 +983,7 @@ main(int argc, char *argv[]){
 		strcpy(arch2,argv[1]);
 		strcpy(arch3,argv[1]);
 		strcpy(arch4,argv[1]);
+		strcpy(arch5,argv[1]);
 
 		strcat(arch1,".tks");
 		strcat(arch2,".tsm");
@@ -987,9 +999,10 @@ main(int argc, char *argv[]){
 
 		//inicio de archivos
 		fprintf(tks," clase valor\n");
-		fprintf(tsm," posicion    simbolo     tipo\n");
+		fprintf(tsm," posicion    simbolo     tipo   valor Inicial\n");
 		fprintf(tsr," posicion    cadena\n");
 		fprintf(ast," Cadena de atomos \n");
+		fprintf(compilado,"\nmain(){\n");
 
 		/*printf("\n <<< -------- Lista de tokens -------- >>>\n");
 		printf("(clase,valor)\n");*/
@@ -1002,7 +1015,7 @@ main(int argc, char *argv[]){
 		printAtomos(atomos,ast);
 		Parser();
 
-
+		fprintf(compilado,"\n}\n");
 		fclose(tks);
 		fclose(tsm);
 		fclose(tsr);
