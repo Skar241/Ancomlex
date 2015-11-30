@@ -437,10 +437,14 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 	else{
 		if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)==0){
 			(*root)->tipo = num.tipoN;
-			if(num.tipoN == 2)//entero
+			if(num.tipoN == 2){//entero
 				sprintf((*root)->valInicial,"%d",(int)num.valorN);
-			else
+				fprintf(compilado," %d ",(int)num.valorN);
+			}
+			else{
 				sprintf((*root)->valInicial,"%e",num.valorN);
+				fprintf(compilado," %e ",num.valorN);
+			}
 		}
 		else if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)>0){
 			onError++;
@@ -455,16 +459,17 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 
 ///*******************   Simbolos de accion   ***********************///
 
-void ATV(char tipo, char identificador[], numero num){
+void ATV(char tipo, char identificador[], numero *num){
 	switch(tipo){
 		case 2: case 4: case 5:
-			if(num.tipoN != 2 && num.tipoN != 4 && num.tipoN != 5){
+			if(num->tipoN != 2 && num->tipoN != 4 && num->tipoN != 5){
 				onError++;
+				num->tipoN = 2;
 				printf("\nError se asigna un real a %s se castea a int por defecto",identificador);
 			}
 		
 		case 10:
-			asignaValorInicial(&tablaSim,identificador,num);
+			asignaValorInicial(&tablaSim,identificador,*num);
 			break;
 		default:
 			onError++;
@@ -476,12 +481,7 @@ void escribe(char text[]){
 	fprintf(compilado," %s ",text);
 }
 
-numero escribeYDetermina(char tipo,double valor){
-	if(tipo == 2)
-		fprintf(compilado," %d ",(int)valor);
-	else
-		fprintf(compilado," %e ",valor);
-	
+numero determina(char tipo,double valor){
 	numero nuevo;
 	nuevo.valorN = valor;
 	nuevo.tipoN = tipo;
@@ -537,7 +537,7 @@ void D(){
 	}
 	escribe(a);
 	b = B();
-	ATV(t,a,b);
+	ATV(t,a,&b);
 	L(t);
 	return;
 }
@@ -640,9 +640,9 @@ numero J(){
 	if(flg = comparacionAtm(c,"xz")){
 		c = avanzaString(&atomos);
 		if(flg == 1)
-			tmp = escribeYDetermina(2,popToken(&root,&flg));
+			tmp = determina(2,popToken(&root,&flg));
 		else
-			tmp = escribeYDetermina(10,popToken(&root,&flg));
+			tmp = determina(10,popToken(&root,&flg));
 	}
 	else
 		Error("No se ha encontrado constante");
@@ -667,7 +667,7 @@ void L(char l){
 			strcpy(a," ");
 		}
 		tmp = B();
-		ATV(l,a,tmp);
+		ATV(l,a,&tmp);
 		L(l);
 	}
 	else if(c == '.'){
