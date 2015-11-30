@@ -32,7 +32,7 @@ tokenList root = NULL;
 typedef struct Stable{
         char simbolo[17];
         int pos;
-        char tipo[13];
+        char tipo;
         char valInicial [16];
         struct Stable *sig;
         }SBtable;
@@ -57,6 +57,12 @@ typedef struct STRING{
 	}STR;
 typedef STR *atm;
 
+typedef struct num{
+	char tipoN;
+	double valorN;
+}numero;
+
+
 atm atomos = NULL;
 
 int lin=1;  //contador de lineas
@@ -64,10 +70,11 @@ int linErr;/// variable que se encarga de decir en que linea esta el error
 char c;// variable de atomo actual
 int onError = 0;//Bandera de errores
 FILE *ast;
+FILE *compilado; 
 
 /*************************** Encabezado de Funciones ************************/
 void fillList(tokenList *cabeza,char cl, double val);
-int addSimbol(tablaS *root,char sim[], int pos, char tipo[]);
+int addSimbol(tablaS *root,char sim[], int pos);
 int addString(tablaC *root,char string[], int pos);
 void addAtomo(atm *root,char atomo,int lin);
 void printTokens(tokenList root,FILE *tks);
@@ -83,11 +90,11 @@ void Parser();
 void S();
 void D();
 void DP();
-void TPP();
-void N();
-void B();
-void J();
-void L();
+char TPP();
+char N();
+numero B();
+numero J();
+void L(char l);
 void P();
 void Z();
 void PP();
@@ -133,7 +140,7 @@ error [^ 	]
 
 {comenta} {;}
 
-{identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0,"  "));
+{identif} {fillList(&root,1,addSimbol(&tablaSim,yytext,0));
 		   addAtomo(&atomos,'a',lin);
 		   }
 
@@ -191,19 +198,18 @@ void addAtomo(atm *root,char atomo,int lin){
 
 //Recibe apuntador, simbolo, posicion(estimada), tipo de dato
 //Produce tabla de simbolos y retorna posicion en la tabla del elemento
-int addSimbol(tablaS *root,char sim[], int pos, char tipo[]){
+int addSimbol(tablaS *root,char sim[], int pos){
 	if(*root==NULL){
 		tablaS nuevo;
 		nuevo = malloc(sizeof(SBtable));
 		strcpy(nuevo->simbolo,sim);
 		nuevo->pos=pos;
-		strcpy(nuevo->tipo,tipo);
 		nuevo->sig=NULL;
 		*root=nuevo;
 		return pos;
 	}
 	else if(!strcmp((*root)->simbolo,sim)) return pos;
-	else return addSimbol(&((*root)->sig),sim,pos+1,tipo);
+	else return addSimbol(&((*root)->sig),sim,pos+1);
 }
 
 //Recibe apuntador, cadena y posicion(estimada)
@@ -254,6 +260,34 @@ char avanzaString(atm *root){
 		*root = (*root)->sig;
 		atm tmoA = *root;
 		printAtomos(tmoA,ast);
+		return tmp;
+	}
+}
+
+char getIdentificador(tablaS root,int posicion,char identificador[16]){
+	if(root == NULL)
+		return 0;
+	else{
+		if(root->pos==posicion){
+			strcpy(identificador,root->simbolo);
+			return 1;
+		}
+		else
+			return getIdentificador(root->sig,posicion,identificador);
+	}
+}
+
+//Retorna el token en el tope de la pila
+//Recibe una bandera 0 si la lista de tokens está vacia, 1 en caso contrario
+double popToken(tokenList *root,char *flg){
+	if((*root)->clase == 9){
+		*flg = 1;
+		return 0;
+	}
+	else{
+		*flg = 0;
+		double tmp = (*root)->valor;
+		*root = (*root)->sig;
 		return tmp;
 	}
 }
@@ -364,7 +398,7 @@ void printTokens(tokenList root,FILE *tks){
 	else{
 		switch (root->clase){
 			case 8:
-				fprintf(tks,"   %d     %f  \n",root->clase,root->valor);
+				fprintf(tks,"   %d     %e  \n",root->clase,root->valor);
 				//printf("(%d,%f)\n",root->clase,root->valor);
 				break;
 			default:
@@ -384,7 +418,7 @@ char comparacionAtm(char atomo,char *atomos){
 	char i=0;
 	while(atomos[i]!='\0'){
 		if(atomo == atomos[i])
-			return 1;
+			return i+1;
 		i++;
 	}
 	return 0;
@@ -396,7 +430,59 @@ void Error(char *msj){
 	onError++;
 }
 
+void asignaValorInicial(tablaS *root,char identificador[],numero num){
+	if(*root == NULL)
+		printf("\n %s no esta definido",identificador);
+	else{
+		if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)==0){
+			(*root)->tipo = num.tipoN;
+			if(num.tipoN == 2)//entero
+				sprintf((*root)->valInicial,"%d",(int)num.valorN);
+			else
+				sprintf((*root)->valInicial,"%e",num.valorN);
+		}
+		else if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)>0)
+			printf("\nError, %s ha sido previamente inicializada",identificador);
+		else
+			asignaValorInicial(&((*root)->sig),identificador,num);
+	}
+}
+
 ///***************   fin funciones auxiliares  **********************///
+
+///*******************   Simbolos de accion   ***********************///
+
+void ATV(char tipo, char identificador[], numero num){
+	switch(tipo){
+		case 2: case 4: case 5:
+			if(num.tipoN != 2)
+				printf("\nError se asigna un real a %s se castea a int por defecto",identificador);
+		
+		case 10:
+			asignaValorInicial(&tablaSim,identificador,num);
+			break;
+		default:
+			printf("\n Error tipos de datos incompatibles en %s",identificador);
+	}
+}
+
+void escribe(char text[]){
+	fprintf(compilado," %s ",text);
+}
+
+numero escribeYDetermina(char tipo,double valor){
+	if(tipo == 2)
+		fprintf(compilado," %d ",(int)valor);
+	else
+		fprintf(compilado," %e ",valor);
+	
+	numero nuevo;
+	nuevo.valorN = valor;
+	nuevo.tipoN = tipo;
+	return nuevo;
+}
+
+///******************  Fin simbolos de accion   *********************///
 
 /////////////////////////////////////////////////////// Funciones de Produciones /////////////////////////////////
 // Funcion Parser, se encarga de mandar a llamar el no terminal inicial de la gramatica
@@ -423,13 +509,30 @@ void S(){
 }
 
 void D(){
-	TPP();
-	if(c == 'a')
+	printf("\n toy D");
+	char t,a [16],flg;
+	int pos;
+	numero b;
+	t = TPP();
+	if(c == 'a'){
 		c = avanzaString(&atomos);
-	else
+		pos = (int)popToken(&root,&flg);
+			if(flg==1){
+				printf("\n Error lista de tokens vacia");
+			}
+			else{
+				getIdentificador(tablaSim,pos,a);
+			}
+
+	}
+	else{
 		Error("No se ha detectado identificador");
-	B();
-	L();
+		strcpy(a," ");
+	}
+	escribe(a);
+	b = B();
+	ATV(t,a,b);
+	L(t);
 	return;
 }
 
@@ -445,69 +548,127 @@ void DP(){
 	return;
 }
 
-void TPP(){
+char TPP(){
+	printf("\n toy TPP");
+	char n=0,e,s,r;
+	char flg;
 	if(comparacionAtm(c,"cle")){
-		N();
-		if(c == 'e')
+		n = N();
+		if(c == 'e'){
 			c = avanzaString(&atomos);
-		else
-			Error("No se ha encontrado tipo de dato");
+			e = (char) popToken(&root,&flg);
+			escribe("int");
+		}
+		else{
+			//Error("No se ha encontrado tipo de dato");
+			e = 0;
+		}
 	}
-	else if(comparacionAtm(c,"sr"))
+	else if(flg = comparacionAtm(c,"sr")){
 		c = avanzaString(&atomos);
+		if(flg == 1 ){
+			s = (char) popToken(&root,&flg);
+			escribe("char");
+			return s;
+		}
+		else{
+			r = (char) popToken(&root,&flg);
+			escribe("double");
+			return r;
+		}
+	}
 	else
 		Error("No se ha encontrado tipo de dato");
-	return;
+	return n+e;
 }
 
-void N(){
-	if(comparacionAtm(c,"cl"))
+char N(){
+	printf("\n toy N");
+	char val=0,flg;
+	if(flg = comparacionAtm(c,"cl")){
 		c = avanzaString(&atomos);
+		if(flg)
+			escribe("short");
+		else
+			escribe("long");
+
+		val = (char) popToken(&root,&flg);
+	}
 	else if(c == 'e'){}
 	else
 		Error("No se ha encontrado tipo de dato");
-	return;
+	return val;
 }
 
 
-void B(){
+numero B(){
+	printf("\n toy B");
+	char flg;
+	numero tmp;
+	tmp.tipoN = 0;
+	tmp.valorN = 0;
 	if(c == '='){
 		c = avanzaString(&atomos);
-		J();
+		escribe("=");
+		popToken(&root,&flg);
+		tmp = J();
 	}
 	else if(comparacionAtm(c,",.")){}
 	else{
 		Error("No se ha encontrado = ");
-		J();
+		tmp = J();
 	}
-	return;
+	return tmp;
 }
 
-void J(){
-	if(comparacionAtm(c,"xyz"))
+numero J(){
+	printf("\n toy J");
+	char flg;
+	numero tmp;
+	tmp.tipoN=0;
+	tmp.valorN=0;
+	if(flg = comparacionAtm(c,"xz")){
 		c = avanzaString(&atomos);
+		if(flg == 1)
+			tmp = escribeYDetermina(2,popToken(&root,&flg));
+		else
+			tmp = escribeYDetermina(10,popToken(&root,&flg));
+	}
 	else
 		Error("No se ha encontrado constante");
-	return;
+	return tmp;
 }
 
-void L(){
+void L(char l){
+	printf("\n toy L");
+	char flg,a[16];
+	numero tmp;
 	if(c == ','){
 		c = avanzaString(&atomos);
-		if(c == 'a')
+		popToken(&root,&flg);
+		escribe(",");
+		if(c == 'a'){
 			c = avanzaString(&atomos);
-		else
+			getIdentificador(tablaSim,(int)popToken(&root,&flg),a);
+			escribe(a);
+		}
+		else{
 			Error("No se ha encontrado identificador");
-		B();
-		L();
+			strcpy(a," ");
+		}
+		tmp = B();
+		L(l);
 	}
-	else if(c == '.')
+	else if(c == '.'){
 		c =avanzaString(&atomos);
+		popToken(&root,&flg);
+		escribe(";\n");
+	}
 	else if(c == 'a'){
 		c = avanzaString(&atomos);
 		Error("No se ha encontrado ,");
-		B();
-		L();
+		tmp = B();
+		L(l);
 	}
 	else
 		Error("No se ha encontrado .");
@@ -805,6 +966,7 @@ main(int argc, char *argv[]){
 		char arch2[strlen(argv[1])+5];
 		char arch3[strlen(argv[1])+5];
 		char arch4[strlen(argv[1])+5];
+		char arch5[strlen(argv[1])+5];
 
 		strcpy(arch1,argv[1]);
 		strcpy(arch2,argv[1]);
@@ -815,11 +977,13 @@ main(int argc, char *argv[]){
 		strcat(arch2,".tsm");
 		strcat(arch3,".tsr");
 		strcat(arch4,".ast");
+		strcat(arch5,".c");
 
 		FILE *tks = fopen(arch1,"w");
 		FILE *tsm = fopen(arch2,"w");
 		FILE *tsr = fopen(arch3,"w");
 		ast = fopen(arch4,"w");
+		compilado = fopen(arch5,"w");
 
 		//inicio de archivos
 		fprintf(tks," clase valor\n");
