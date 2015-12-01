@@ -1,0 +1,23 @@
+¡Programa sin errores!
+_real x := 12e-3, y := 13 .
+_real w := 1, u := 2.3e4 .
+_entero q := 2.3 .
+
+_mientras(x>y)
+ 	q := 23 .
+_finmientras
+.
+
+_haz 
+	x := x+1 .
+_hasta(x>20) .
+
+_si(x=10)
+	q := q * w .
+_sino
+	q := q - 1 .
+_finsi
+
+_desde x := 0 . _hasta(x>20) _incremento( 2 + 2 )
+	y := 2 .
+_findesde

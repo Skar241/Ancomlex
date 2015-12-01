@@ -70,6 +70,7 @@ int linErr;/// variable que se encarga de decir en que linea esta el error
 char c;// variable de atomo actual
 int onError = 0;//Bandera de errores
 FILE *ast;
+FILE *tsm;
 FILE *compilado; 
 
 /*************************** Encabezado de Funciones ************************/
@@ -101,16 +102,16 @@ void PP();
 void M();
 void H();
 void I();
-char R();
+char R(char hasOmie);
 void G();
 void FP();
 void A();
-void O();
-void E();
-void EP();
-void T();
-void TP();
-void F();
+int O();
+char E();
+char EP();
+char T();
+char TP();
+char F();
 %}
 
 /************ Expresiones regulares que definen el lenguaje ***************/
@@ -123,7 +124,7 @@ control si|sino|finsi|mientras|finmientras|haz|desde|hasta|incremento|findesde
 palRes _({tipo}|{control})
 decimal [0-9]+
 realSe ([0-9]+\.|\.[0-9])[0-9]*
-realCe ({decimal}|{realSe})E(-|\+)?{decimal}
+realCe ({decimal}|{realSe})(E|e)(-|\+)?{decimal}
 real ({realSe}|{realCe})
 salto \n
 opAsig :=
@@ -275,6 +276,18 @@ char getIdentificador(tablaS root,int posicion,char identificador[16]){
 		}
 		else
 			return getIdentificador(root->sig,posicion,identificador);
+	}
+}
+
+char getTipoIdentificador(tablaS root,char identificador[16]){
+	if(root == NULL)
+		return 0;
+	else{
+		if(!strcmp(root->simbolo,identificador)){
+			return root->tipo;
+		}
+		else
+			return getTipoIdentificador(root->sig,identificador);
 	}
 }
 
@@ -439,11 +452,11 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 			(*root)->tipo = num.tipoN;
 			if(num.tipoN == 2){//entero
 				sprintf((*root)->valInicial,"%d",(int)num.valorN);
-				fprintf(compilado," %d ",(int)num.valorN);
+				fprintf(compilado," %d",(int)num.valorN);
 			}
 			else{
 				sprintf((*root)->valInicial,"%e",num.valorN);
-				fprintf(compilado," %e ",num.valorN);
+				fprintf(compilado," %e",num.valorN);
 			}
 		}
 		else if(!strcmp((*root)->simbolo,identificador) && strlen((*root)->valInicial)>0){
@@ -463,9 +476,8 @@ void ATV(char tipo, char identificador[], numero *num){
 	switch(tipo){
 		case 2: case 4: case 5:
 			if(num->tipoN != 2 && num->tipoN != 4 && num->tipoN != 5){
-				onError++;
 				num->tipoN = 2;
-				printf("\nError se asigna un real a %s se castea a int por defecto",identificador);
+				printf("\nCuidado se asigna un real a '%s' se castea a int por defecto",identificador);
 			}
 		
 		case 10:
@@ -478,7 +490,7 @@ void ATV(char tipo, char identificador[], numero *num){
 }
 
 void escribe(char text[]){
-	fprintf(compilado," %s ",text);
+	fprintf(compilado," %s",text);
 }
 
 numero determina(char tipo,double valor){
@@ -486,6 +498,77 @@ numero determina(char tipo,double valor){
 	nuevo.valorN = valor;
 	nuevo.tipoN = tipo;
 	return nuevo;
+}
+
+char determinaTipo(char h1,char h2){
+	if(h1==10 || h2==10)
+		return 10;
+	else
+		return 2;
+}
+
+char escribeIdentYDetTipo(){
+	char a[16];
+	char flg;
+	if(getIdentificador(tablaSim,(int)popToken(&root,&flg),a))
+		fprintf(compilado," %s",a);
+	return getTipoIdentificador(tablaSim,a);
+}
+
+void comparaAsignacion(char h1,char h2){
+	switch(h1){
+		case 2: case 4: case 5:
+			if(h2 == 10)
+				printf("\nCuidado, se hace asignacion de real a entero\n");
+	}
+}
+
+void comparaOperacion(char h1,char h2,int h3){
+	char opRel [6][3] = {">",">=","<","<=","=","><"};
+	if(!h1 || !h2)
+		printf("\n Posible conflicto de operadores en la relacion %s",opRel[h3]);
+}
+//0 hasta, 1 mientras
+void printOperadorRel(int pos,char hasOmie){
+	switch(pos){
+		case 0:
+			if(hasOmie)
+				escribe(" >");
+			else
+				escribe(" <=");
+			break;
+		case 1:
+			if(hasOmie)
+				escribe(" >=");
+			else
+				escribe(" <=");
+			break;
+		case 2:
+			if(hasOmie)
+				escribe(" <");
+			else
+				escribe(" >=");
+			break;
+		case 3:
+			if(hasOmie)
+				escribe(" <=");
+			else
+				escribe(" >=");
+			break;
+		case 4:
+			escribe(" ==");
+			break;
+		case 5:
+			escribe(" !=");
+			break;
+		default:
+			printf("Operador no corecto");
+			onError++;
+	}
+}
+void writeTSM(){
+	fprintf(tsm," posicion    simbolo     tipo   valor Inicial\n");
+	printSimbolos(tablaSim,tsm);
 }
 
 ///******************  Fin simbolos de accion   *********************///
@@ -510,12 +593,12 @@ void Parser(){
 void S(){
 	D();
 	DP();
+	writeTSM();
 	P();
 	return;
 }
 
 void D(){
-	printf("\n toy D");
 	char t,a [16],flg;
 	int pos;
 	numero b;
@@ -547,7 +630,7 @@ void DP(){
 		D();
 		DP();
 	}
-	else if(comparacionAtm(c,".mhida")){}
+	else if(comparacionAtm(c,".mhida")){escribe("\n");}
 	else{
 		Error("No se puede continuar con la Compilacion");
 	}
@@ -555,7 +638,6 @@ void DP(){
 }
 
 char TPP(){
-	printf("\n toy TPP");
 	char n=0,e,s,r;
 	char flg;
 	if(comparacionAtm(c,"cle")){
@@ -589,7 +671,6 @@ char TPP(){
 }
 
 char N(){
-	printf("\n toy N");
 	char val=0,flg;
 	if(flg = comparacionAtm(c,"cl")){
 		c = avanzaString(&atomos);
@@ -612,7 +693,6 @@ char N(){
 
 
 numero B(){
-	printf("\n toy B");
 	char flg;
 	numero tmp;
 	tmp.tipoN = 2;
@@ -632,7 +712,6 @@ numero B(){
 }
 
 numero J(){
-	printf("\n toy J");
 	char flg;
 	numero tmp;
 	tmp.tipoN=2;
@@ -650,7 +729,6 @@ numero J(){
 }
 
 void L(char l){
-	printf("\n toy L");
 	char flg,a[16];
 	numero tmp;
 	if(c == ','){
@@ -677,8 +755,11 @@ void L(char l){
 	}
 	else if(c == 'a'){
 		c = avanzaString(&atomos);
+		getIdentificador(tablaSim,(int)popToken(&root,&flg),a);
+		escribe(a);
 		Error("No se ha encontrado ,");
 		tmp = B();
+		ATV(l,a,&tmp);
 		L(l);
 	}
 	else
@@ -697,9 +778,12 @@ void P(){
 }
 
 void Z(){
+	char flg;
 	switch(c){
 		case '.':
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" ;\n");
 			break;
 		case 'm':
 			M();
@@ -727,31 +811,45 @@ void PP(){
 		Z();
 		PP();
 	}
-	else if(comparacionAtm(c,"@ftnbg")){}
+	else if(comparacionAtm(c,"@ftnbg")){
+		escribe("\n");
+	}
 	else
 		Error("No se ha encontrado palabra reservada o .");
 	return;
 }
 
 void M(){
+	char flg;
 	if(c == 'm'){
 		c = avanzaString(&atomos);
-		if(c == '(')
+		popToken(&root,&flg);
+		escribe(" while");
+		if(c == '('){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" (");
+		}
 		else
-			Error("No se ha encontrado )");
+			Error("No se ha encontrado (");
 		
-		if(R())
+		if(R(1))
 			Error("No se ha ingresado correctamente alguna relacion");
 		
-		if(c == ')')
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" ){\n");
+		}
 		else
 			Error("No se ha encontrado )");
 		
 		P();
-		if(c == 'f')
+		if(c == 'f'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" }\n");
+		}
 		else
 			Error("No se ha encontrado _finmientras");
 	}
@@ -761,24 +859,39 @@ void M(){
 }
 
 void H(){
+	char flg;
 	if(c == 'h'){
 		c = avanzaString(&atomos);
+		popToken(&root,&flg);
+		escribe(" do{\n");
 		P();
-		if(c == 't')
+		if(c == 't'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe("\n}while");
+		}
 		else
 			Error("No se ha encontrado _hasta");
-		if(c == '(')
+		if(c == '('){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" (");
+		}
 		else
 			Error("Falta (");
 		R(0);
-		if(c == ')')
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" )");
+		}
 		else
 			Error("Falta )");
-		if(c == '.')
+		if(c == '.'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(";\n");
+		}
 		else
 			Error("falta .");
 	}
@@ -788,18 +901,27 @@ void H(){
 }
 
 void I(){
+	char flg;
 	if(c == 'i'){
 		c = avanzaString(&atomos);
-		if(c == '(')
+		popToken(&root,&flg);
+		escribe("\nif");
+		if(c == '('){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe("(");
+		}
 		else
 			Error("Falta (");
 		
-		if(R())
+		if(R(1))
 			Error("No se ha ingresado correctamente alguna relacion");
 
-		if(c == ')')
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" ){\n");
+		}
 		else 
 			Error("Falta )");
 		P();
@@ -809,54 +931,84 @@ void I(){
 }
 
 void G(){
+	char flg;
 	if(c == 'n'){
 		c = avanzaString(&atomos);
+		popToken(&root,&flg);
+		escribe("\n}\nelse {\n");
 		P();
-		if(c == 'b')
+		if(c == 'b'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe("\n}\n");
+		}
 		else
 			Error("Falta _finsi");
 	}
-	else if(c == 'b')
+	else if(c == 'b'){
 		c = avanzaString(&atomos);
+		popToken(&root,&flg);
+		escribe("\n}\n");
+	}
 	else
 		Error("No se ha encontrado _sino");
 	return;
 }
 
 void FP(){
+	char flg;
 	if(c == 'd'){
 		c = avanzaString(&atomos);
+		popToken(&root,&flg);
+		escribe("for(");
 		A();
-		if(c == 't')
+		if(c == 't'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+		}
 		else
 			Error("No a detectado _hasta");
-		if(c == '(')
+		if(c == '('){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+		}
 		else
 			Error("No a detectado (");
-		E();
-		if(c == ')')
+		if(R(0))
+			error("No se ha ingresado bien alguna relacion");
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" ;");
+		}
 		else
 			Error("No a detectado )");
-		if(c == 'p')
+		if(c == 'p'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+		}
 		else
 			Error("No a detectado _incremento");
-		if(c == '(')
+		if(c == '('){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+		}
 		else
 			Error("No a detectado (");
 		E();
-		if(c == ')')
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe(" ){\n");
+		}
 		else
 			Error("No a detectado )");
 		P();
-		if(c == 'g')
+		if(c == 'g'){
 			c = avanzaString(&atomos);
+			popToken(&root,&flg);
+			escribe("\n}\n");
+		}
 		else
 			Error("No a detectado _findesde");
 	}
@@ -866,100 +1018,158 @@ void FP(){
 }
 
 void A(){
+	char flg,t1,t2;
 	if(c == 'a'){
 		c = avanzaString(&atomos);
-		if(c == '=')
-			c = avanzaString(&atomos);
-		else
-			Error("No se ha detectado :=");
-		E();
-		if(c == '.')
-			c = avanzaString(&atomos);
-		else
-			Error("No a detectado .");
+		t1 = escribeIdentYDetTipo();
+		if(t1 == 0){
+			printf("\n No se a encontrado indetificador");
+			onError++;
+		}
+		else{
+			if(c == '='){
+				c = avanzaString(&atomos);
+				popToken(&root,&flg);
+				fprintf(compilado," =");
+			}
+			else
+				Error("No se ha detectado :=");
+			t2 = E();
+			comparaAsignacion(t1,t2);
+			if(c == '.'){
+				c = avanzaString(&atomos);
+				popToken(&root,&flg);
+				escribe(" ;");
+			}
+			else
+				Error("No a detectado .");
+		}
 	}
 	return;
 }
 
-char R(){
-	if(comparacionAtm(c,"(axzy")){
-		E();
-		O();
-		E();
+char R(char hasOmie){
+	char e1,e2;
+	int o;
+	if(comparacionAtm(c,"(axz")){
+		e1 = E();
+		printOperadorRel(o = O(),hasOmie);		
+		e2 = E();
+		comparaOperacion(e1,e2,o);
 		return 0;
 	}
 	return 1;
 }
 
-void O(){
-	if(comparacionAtm(c,"jkquvw"))
+int O(){
+	char flg;
+	if(comparacionAtm(c,"jkquvw")){
 		c = avanzaString(&atomos);
+		return (int)popToken(&root,&flg);
+	}
 	else
 		Error("No se ha encontrado Op. Rel.");
-	return;
+	return ' ';
 }
 
-void E(){
-	if(comparacionAtm(c,"(axzy")){
+char E(){
+	char t=0,ep=0;
+	if(comparacionAtm(c,"(axz")){
 		T();
 		EP();
 	}
-	return;
+	else
+		Error("No se encuentran operandos");
+	return determinaTipo(t,ep);
 }
 
 
-void EP(){
-	if(comparacionAtm(c,"+-")){
+char EP(){
+	char t=0,ep=0,flg;
+	if(flg = comparacionAtm(c,"+-")){
 		c = avanzaString(&atomos);
-		T();
-		EP();
+		if(flg == 1)
+			fprintf(compilado," +");
+		else
+			fprintf(compilado," -");
+		popToken(&root,&flg);
+		t = T();
+		ep = EP();
 	}
-	else if(comparacionAtm(c,").jkquvw")){}
+	else if(comparacionAtm(c,").jkquvw")){ return 0;}
 	else{
-		T();
-		EP();
+		Error("No se encontro operador");
+		t = T();
+		ep = EP();
 	}
-	return;
+	return determinaTipo(t,ep);
 }
 
-void T(){
-	if(comparacionAtm(c,"(axzy")){
-		F();
-		TP();
+char T(){
+	char f=0,tp=0;
+	if(comparacionAtm(c,"(axz")){
+		f = F();
+		tp = TP();
 	}
-	return;
+	else
+		Error("No se encuentran operandos");
+	return determinaTipo(f,tp);
 }
 
-void TP(){
-	if(comparacionAtm(c,"*/")){
+char TP(){
+	char f=0,tp=0,flg;
+	if(flg = comparacionAtm(c,"*/")){
 		c = avanzaString(&atomos);
-		F();
-		TP();
+		if(flg == 1)
+			fprintf(compilado," *");
+		else
+			fprintf(compilado," /");
+		popToken(&root,&flg);
+		f = F();
+		tp = TP();
 	}
-	else if(comparacionAtm(c,"+-).jkquvw")){}
+	else if(comparacionAtm(c,"+-).jkquvw")){return 0;}
 	else{
-		F();
-		TP();
+		Error("No se detecta operador");
+		f = F();
+		tp = TP();
 	}
-	return;
+	return determinaTipo(f,tp);
 }
 
-void F(){
+char F(){
+	char a[16];
+	char tipo=0;
+	char flg;
+	numero tmp;
 	if(c == '('){
+		fprintf(compilado," (");
+		popToken(&root,&flg);
 		c = avanzaString(&atomos);
-		E();
-		if(c == ')')
+		tipo = E();
+		if(c == ')'){
 			c = avanzaString(&atomos);
+			fprintf(compilado," )");
+			popToken(&root,&flg);
+		}
 		else
 			Error("Falta )");
 	}
-	else if(c == 'a')
+	else if(c == 'a'){
 		c = avanzaString(&atomos);
-	else if(comparacionAtm(c,"xyz"))
-		J();
+		tipo = escribeIdentYDetTipo();
+	}
+	else if(flg = comparacionAtm(c,"xz")){
+		tmp=J();
+		if(flg == 1)
+			fprintf(compilado," %d",(int)tmp.valorN);
+		else
+			fprintf(compilado," %e",tmp.valorN);
+		tipo = tmp.tipoN;
+	}
 	else
 		Error("No se encontro operando");
-	return;
+	return tipo;
 
 }
 
@@ -992,14 +1202,14 @@ main(int argc, char *argv[]){
 		strcat(arch5,".c");
 
 		FILE *tks = fopen(arch1,"w");
-		FILE *tsm = fopen(arch2,"w");
+		tsm = fopen(arch2,"w");
 		FILE *tsr = fopen(arch3,"w");
 		ast = fopen(arch4,"w");
 		compilado = fopen(arch5,"w");
 
 		//inicio de archivos
 		fprintf(tks," clase valor\n");
-		fprintf(tsm," posicion    simbolo     tipo   valor Inicial\n");
+		
 		fprintf(tsr," posicion    cadena\n");
 		fprintf(ast," Cadena de atomos \n");
 		fprintf(compilado,"\nmain(){\n");
@@ -1007,7 +1217,6 @@ main(int argc, char *argv[]){
 		/*printf("\n <<< -------- Lista de tokens -------- >>>\n");
 		printf("(clase,valor)\n");*/
 		printTokens(root,tks);
-		printSimbolos(tablaSim,tsm);
 		printStrings(tablaStr,tsr);
 
 
@@ -1021,4 +1230,5 @@ main(int argc, char *argv[]){
 		fclose(tsr);
 		fclose(ast);		
 	}
+
 }
