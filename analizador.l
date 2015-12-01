@@ -177,7 +177,8 @@ error [^ 	]
 		}
 
 {salto} {lin++;}
-{error} {printf("\nError en linea: %d %s no esta definida\n",lin,yytext);}
+{error} {printf("\nError en linea: %d %s no esta definida\n",lin,yytext);
+		onError++;}
 
 %%
 
@@ -266,6 +267,8 @@ char avanzaString(atm *root){
 	}
 }
 
+//Recibe tabla de simbolos, posicion del simbolo a buscar
+//guarda el identificador del simbolo en el arreglo recibido
 char getIdentificador(tablaS root,int posicion,char identificador[16]){
 	if(root == NULL)
 		return 0;
@@ -279,6 +282,8 @@ char getIdentificador(tablaS root,int posicion,char identificador[16]){
 	}
 }
 
+//Recibe tabla de simbolos, identificador del simbolo
+//retorna el tipo de dato del que se trata
 char getTipoIdentificador(tablaS root,char identificador[16]){
 	if(root == NULL)
 		return 0;
@@ -438,12 +443,14 @@ char comparacionAtm(char atomo,char *atomos){
 	return 0;
 }
 
-//REcibe mensaje y escribe en la linea donde se detecto el error, aumenta la bandera de errores
+//Recibe mensaje y escribe en la linea donde se detecto el error, aumenta la bandera de errores
 void Error(char *msj){
 	printf("%s en linea %d\n",msj,linErr);
 	onError++;
 }
 
+//recibe tabla de simbolos, identificador y numero(tipo de dato y valor)
+//asigna tipo de dato y valor al elemento con el identificador enviado
 void asignaValorInicial(tablaS *root,char identificador[],numero num){
 	if(*root == NULL)
 		printf("\n %s no esta definido",identificador);
@@ -472,6 +479,10 @@ void asignaValorInicial(tablaS *root,char identificador[],numero num){
 
 ///*******************   Simbolos de accion   ***********************///
 
+//Recibe tipo de dato, identificador, constante
+//se encarga de verificar que la constante que se asigna sea del mismo tipo de dato 
+//definido para el identificador, en caso de que no sea asi se cambia el tipo de dato
+// para que sea casteado
 void ATV(char tipo, char identificador[], numero *num){
 	switch(tipo){
 		case 2: case 4: case 5:
@@ -489,10 +500,15 @@ void ATV(char tipo, char identificador[], numero *num){
 	}
 }
 
+//recibe texto a escribir en el archivo
+//no produce nada, no es aplicable como simbolo de accion para
+//algunos casos en los que se debe escribir con cierto formato
 void escribe(char text[]){
 	fprintf(compilado," %s",text);
 }
 
+//recibe el tipo de dato que se encuentra, y la constante numerica
+//Produce un elemento del tipo numero
 numero determina(char tipo,double valor){
 	numero nuevo;
 	nuevo.valorN = valor;
@@ -500,6 +516,9 @@ numero determina(char tipo,double valor){
 	return nuevo;
 }
 
+//recibe dos tipos de datos
+//si alguno de ellos es real, la operacion se transforma en un tipo real
+//sino retorna entero como tipo de dato
 char determinaTipo(char h1,char h2){
 	if(h1==10 || h2==10)
 		return 10;
@@ -507,6 +526,9 @@ char determinaTipo(char h1,char h2){
 		return 2;
 }
 
+//recibe identificador
+//si encuentra el identificador lo escribe en el archivo
+//retorna el tipo de dato del que se trata
 char escribeIdentYDetTipo(char tmp[16]){
 	char a[16];
 	char flg;
@@ -516,6 +538,8 @@ char escribeIdentYDetTipo(char tmp[16]){
 	return getTipoIdentificador(tablaSim,a);
 }
 
+//recibe tipos de dato a asignar y el tipo de dato que es el identificador
+//si se asigna un real a un entero produce un warning
 void comparaAsignacion(char h1,char h2){
 	switch(h1){
 		case 2: case 4: case 5:
@@ -524,12 +548,17 @@ void comparaAsignacion(char h1,char h2){
 	}
 }
 
+//recibe tipos de dato que se comparan
+//si son diferentes produce un warning
 void comparaOperacion(char h1,char h2,int h3){
 	char opRel [6][3] = {">",">=","<","<=","=","><"};
 	if(!h1 || !h2)
 		printf("\n Posible conflicto de operadores en la relacion %s",opRel[h3]);
 }
-//0 hasta, 1 mientras
+
+//recibe posicion del operador relacional a imprimir y sentencia en la que se esta
+//0 hasta, 1 mientras,if
+//si es hasta invierte el operador para concordar en lenguaje c
 void printOperadorRel(int pos,char hasOmie){
 	switch(pos){
 		case 0:
@@ -567,6 +596,9 @@ void printOperadorRel(int pos,char hasOmie){
 			onError++;
 	}
 }
+
+//Recibe nada
+//imprime en archivo la tabla de simbolos una vez que han sido inicializados
 void writeTSM(){
 	fprintf(tsm," posicion    simbolo     tipo   valor Inicial\n");
 	printSimbolos(tablaSim,tsm);
@@ -1233,5 +1265,4 @@ main(int argc, char *argv[]){
 		fclose(tsr);
 		fclose(ast);		
 	}
-
 }
