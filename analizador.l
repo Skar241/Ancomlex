@@ -105,7 +105,7 @@ void I();
 char R(char hasOmie);
 void G();
 void FP();
-void A();
+void A(char a[16]);
 int O();
 char E();
 char EP();
@@ -507,11 +507,12 @@ char determinaTipo(char h1,char h2){
 		return 2;
 }
 
-char escribeIdentYDetTipo(){
+char escribeIdentYDetTipo(char tmp[16]){
 	char a[16];
 	char flg;
 	if(getIdentificador(tablaSim,(int)popToken(&root,&flg),a))
 		fprintf(compilado," %s",a);
+	strcpy(tmp,a);
 	return getTipoIdentificador(tablaSim,a);
 }
 
@@ -778,7 +779,7 @@ void P(){
 }
 
 void Z(){
-	char flg;
+	char flg,a[16];
 	switch(c){
 		case '.':
 			c = avanzaString(&atomos);
@@ -798,7 +799,7 @@ void Z(){
 			FP();
 			break;
 		case 'a':
-			A();
+			A(a);
 			break;
 		default :
 			Error("No se ha encontrado palabra reservada o .");
@@ -956,12 +957,12 @@ void G(){
 }
 
 void FP(){
-	char flg;
+	char flg,a[16];
 	if(c == 'd'){
 		c = avanzaString(&atomos);
 		popToken(&root,&flg);
 		escribe("for(");
-		A();
+		A(a);
 		if(c == 't'){
 			c = avanzaString(&atomos);
 			popToken(&root,&flg);
@@ -986,6 +987,8 @@ void FP(){
 		if(c == 'p'){
 			c = avanzaString(&atomos);
 			popToken(&root,&flg);
+			escribe(a);
+			escribe(" =");
 		}
 		else
 			Error("No a detectado _incremento");
@@ -1017,11 +1020,11 @@ void FP(){
 	return;
 }
 
-void A(){
+void A(char a[16]){
 	char flg,t1,t2;
 	if(c == 'a'){
 		c = avanzaString(&atomos);
-		t1 = escribeIdentYDetTipo();
+		t1 = escribeIdentYDetTipo(a);
 		if(t1 == 0){
 			printf("\n No se a encontrado indetificador");
 			onError++;
@@ -1157,7 +1160,7 @@ char F(){
 	}
 	else if(c == 'a'){
 		c = avanzaString(&atomos);
-		tipo = escribeIdentYDetTipo();
+		tipo = escribeIdentYDetTipo(a);
 	}
 	else if(flg = comparacionAtm(c,"xz")){
 		tmp=J();
